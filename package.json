@@ -1,0 +1,149 @@
+{
+  "name": "minecraft-plugin-development",
+  "displayName": "Minecraft Plugin Development",
+  "description": "Generate basic structure for Minecraft plugin projects",
+  "version": "1.0.9",
+  "engines": {
+    "vscode": ">=1.115.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "minecraft-plugin-development.createNewPlugin",
+        "title": "Create New Minecraft Plugin",
+        "icon": "$(file-add)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.refreshPluginStructure",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.selectMinecraftVersion",
+        "title": "Select Minecraft Version",
+        "icon": "$(versions)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addCommand",
+        "title": "Add Command to Plugin",
+        "icon": "$(symbol-method)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addListener",
+        "title": "Add Event Listener",
+        "icon": "$(symbol-event)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addConfig",
+        "title": "Add Configuration File",
+        "icon": "$(settings-gear)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.generateGettersSetters",
+        "title": "Generate Getters/Setters",
+        "icon": "$(symbol-property)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.searchJavaFiles",
+        "title": "Search Java Files",
+        "icon": "$(search)",
+        "category": "Minecraft"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "java",
+        "path": "./snippets/java.json"
+      }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "explorer",
+        "contents": "No folder opened.\n[Create New Minecraft Plugin](command:minecraft-plugin-development.createNewPlugin)",
+        "when": "workbenchState == empty"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "minecraft-plugin-explorer",
+          "title": "Minecraft Plugin",
+          "icon": "images/spigot.svg"
+        }
+      ]
+    },
+    "views": {
+      "minecraft-plugin-explorer": [
+        {
+          "id": "minecraftPluginStructure",
+          "name": "Plugin Files",
+          "icon": "images/spigot.svg"
+        },
+        {
+          "id": "minecraftPluginTools",
+          "name": "Plugin Tools",
+          "icon": "images/spigot.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "minecraft-plugin-development.searchJavaFiles",
+          "when": "view == minecraftPluginStructure",
+          "group": "navigation@0"
+        },
+        {
+          "command": "minecraft-plugin-development.refreshPluginStructure",
+          "when": "view == minecraftPluginStructure",
+          "group": "navigation@1"
+        }
+      ]
+    }
+  },
+  "publisher": "Gabodev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gabodev/minecraft-plugin-development.git"
+  },
+  "author": {
+    "name": "Gabodev"
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e415e",
+    "theme": "dark"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.78.0",
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "eslint": "^9.13.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1"
+  }
+}

@@ -1,0 +1,126 @@
+{
+    "Command Handler": {
+        "prefix": "mccommand",
+        "body": [
+            "@Override",
+            "public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {",
+            "    if (!(sender instanceof Player)) {",
+            "        sender.sendMessage(\"This command can only be used by players\");",
+            "        return true;",
+            "    }",
+            "",
+            "    Player player = (Player) sender;",
+            "",
+            "    if (args.length < ${1:1}) {",
+            "        player.sendMessage(\"${2:Usage: /command <arg>}\");",
+            "        return true;",
+            "    }",
+            "",
+            "    $0",
+            "",
+            "    return true;",
+            "}"
+        ],
+        "description": "Creates a basic command handler method"
+    },
+    "Event Listener": {
+        "prefix": "mcevent",
+        "body": [
+            "@EventHandler",
+            "public void on${1:Event}(${1:Event}Event event) {",
+            "    $0",
+            "}"
+        ],
+        "description": "Creates an event listener method"
+    },
+    "Config Access": {
+        "prefix": "mcconfig",
+        "body": [
+            "FileConfiguration config = getConfig();",
+            "${1|config.getString,config.getInt,config.getBoolean,config.getDouble,config.getStringList|}(\"${2:path}\"${3:, ${4:defaultValue}});"
+        ],
+        "description": "Access configuration values"
+    },
+    "Config Section": {
+        "prefix": "mcconfigsection",
+        "body": [
+            "ConfigurationSection ${1:section} = ${2:config}.getConfigurationSection(\"${3:path}\");",
+            "if (${1:section} != null) {",
+            "    for (String key : ${1:section}.getKeys(false)) {",
+            "        $0",
+            "    }",
+            "}"
+        ],
+        "description": "Creates a configuration section loop"
+    },
+    "Item Stack Builder": {
+        "prefix": "mcitem",
+        "body": [
+            "ItemStack ${1:item} = new ItemStack(Material.${2:MATERIAL});",
+            "ItemMeta ${1:item}Meta = ${1:item}.getItemMeta();",
+            "${1:item}Meta.setDisplayName(\"${3:Display Name}\");",
+            "",
+            "List<String> lore = new ArrayList<>();",
+            "lore.add(\"${4:Lore line 1}\");",
+            "${1:item}Meta.setLore(lore);",
+            "",
+            "${1:item}.setItemMeta(${1:item}Meta);"
+        ],
+        "description": "Creates an ItemStack with meta"
+    },
+    "GUI Creation": {
+        "prefix": "mcgui",
+        "body": [
+            "Inventory gui = Bukkit.createInventory(null, ${1:9}, \"${2:GUI Title}\");",
+            "",
+            "// Add items",
+            "gui.setItem(${3:0}, ${4:item});",
+            "",
+            "player.openInventory(gui);"
+        ],
+        "description": "Creates a basic GUI inventory"
+    },
+    "GUI Handler": {
+        "prefix": "mcguihandler",
+        "body": [
+            "@EventHandler",
+            "public void onInventoryClick(InventoryClickEvent event) {",
+            "    if (!event.getView().getTitle().equals(\"${1:GUI Title}\")) {",
+            "        return;",
+            "    }",
+            "",
+            "    event.setCancelled(true);",
+            "",
+            "    Player player = (Player) event.getWhoClicked();",
+            "    ItemStack clickedItem = event.getCurrentItem();",
+            "",
+            "    if (clickedItem == null || clickedItem.getType() == Material.AIR) {",
+            "        return;",
+            "    }",
+            "",
+            "    $0",
+            "}"
+        ],
+        "description": "Creates an inventory click handler for GUIs"
+    },
+    "Database Connection": {
+        "prefix": "mcdb",
+        "body": [
+            "private Connection connection;",
+            "",
+            "private void connectToDatabase() {",
+            "    try {",
+            "        Class.forName(\"com.mysql.jdbc.Driver\");",
+            "        connection = DriverManager.getConnection(",
+            "            \"jdbc:mysql://${1:localhost}:${2:3306}/${3:database}\",",
+            "            \"${4:username}\",",
+            "            \"${5:password}\"",
+            "        );",
+            "    } catch (SQLException | ClassNotFoundException e) {",
+            "        getLogger().severe(\"Could not connect to database: \" + e.getMessage());",
+            "    }",
+            "}"
+        ],
+        "description": "Creates a database connection method"
+    }
+}

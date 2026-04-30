@@ -1,0 +1,27 @@
+# Dependency directories
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# VS Code specific
+.vscode/
+*.vsix
+
+# Build outputs
+out/
+dist/
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE/Editor temporary files
+*.tmp
+*.bak
+*~
+.history/
+.eslintcache

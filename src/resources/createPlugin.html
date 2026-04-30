@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            padding: 30px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu', sans-serif;
+            background-color: var(--vscode-editor-background);
+            color: var(--vscode-editor-foreground);
+        }
+
+        h2 {
+            color: var(--vscode-titleBar-activeForeground);
+            border-bottom: 2px solid var(--vscode-textLink-foreground);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--vscode-editor-background);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--vscode-input-foreground);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--vscode-input-border);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+            box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+        }
+
+        button {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background: var(--vscode-button-hoverBackground);
+            transform: translateY(-1px);
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        button:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0, 0); opacity: 0.5; }
+            100% { transform: scale(200, 200); opacity: 0; }
+        }
+
+        .required::after {
+            content: " *";
+            color: var(--vscode-errorForeground);
+        }
+
+        .form-section {
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .form-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .minecraft-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .minecraft-title {
+            font-family: 'Minecraft', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 28px;
+            color: var(--vscode-textLink-foreground);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            font-size: 16px;
+            color: var(--vscode-input-foreground);
+            opacity: 0.8;
+        }
+
+        .input-with-icon {
+            position: relative;
+            flex: 1;
+        }
+
+        .input-with-icon input,
+        .input-with-icon select {
+            width: 100%;
+            padding-right: 12px;
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip:hover::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            transform: none;
+            padding: 5px 10px;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--vscode-textLink-foreground);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="minecraft-header">
+            <h1 class="minecraft-title">Create Minecraft Plugin</h1>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">
+                <span class="input-icon">📦</span>
+                Project Details
+            </div>
+            <div class="form-group">
+                <label class="required">Project Name:</label>
+                <div class="input-group">
+                    <span class="input-icon">📄</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="projectName" placeholder="MyPlugin" required>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="required">Package Name:</label>
+                <div class="input-group">
+                    <span class="input-icon">📦</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="packageName" placeholder="com.example" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">
+                <span class="input-icon">ℹ️</span>
+                Plugin Information
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="required">Plugin Version:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🏷️</span>
+                        <div class="input-with-icon">
+                            <input type="text" id="pluginVersion" value="1.0.0-SNAPSHOT" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="required">Author Name:</label>
+                    <div class="input-group">
+                        <span class="input-icon">👤</span>
+                        <div class="input-with-icon">
+                            <input type="text" id="authorName" placeholder="Your Name" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Website (opcional):</label>
+                <div class="input-group">
+                    <span class="input-icon">🌐</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="website" placeholder="https://example.com">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">
+                <span class="input-icon">⚙️</span>
+                Technical Settings
+            </div>
+            <div class="form-grid">
+                <div class="form-group tooltip" data-tooltip="Select your target Minecraft version">
+                    <label>Minecraft Version:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🎮</span>
+                        <div class="input-with-icon">
+                            <select id="minecraftVersion">
+                                <option value="26.1.2">26.1.2</option>
+                                <option value="26.1.1">26.1.1</option>
+                                <option value="26.1">26.1</option>
+                                <option value="1.21.10">1.21.10</option>
+                                <option value="1.21.9">1.21.9</option>
+                                <option value="1.21.8">1.21.8</option>
+                                <option value="1.21.7">1.21.7</option>
+                                <option value="1.21.6">1.21.6</option>
+                                <option value="1.21.5">1.21.5</option>
+                                <option value="1.21.4">1.21.4</option>
+                                <option value="1.21.3">1.21.3</option>
+                                <option value="1.21.2">1.21.2</option>
+                                <option value="1.21.1">1.21.1</option>
+                                <option value="1.21">1.21</option>
+                                <option value="1.20.6">1.20.6</option>
+                                <option value="1.20.5">1.20.5</option>
+                                <option value="1.20.4">1.20.4</option>
+                                <option value="1.20.3">1.20.3</option>
+                                <option value="1.20.2">1.20.2</option>
+                                <option value="1.20.1">1.20.1</option>
+                                <option value="1.19.4">1.19.4</option>
+                                <option value="1.19.3">1.19.3</option>
+                                <option value="1.19.2">1.19.2</option>
+                                <option value="1.19.1">1.19.1</option>
+                                <option value="1.19">1.19</option>
+                                <option value="1.18.2">1.18.2</option>
+                                <option value="1.18.1">1.18.1</option>
+                                <option value="1.18">1.18</option>
+                                <option value="1.17.1">1.17.1</option>
+                                <option value="1.17">1.17</option>
+                                <option value="1.16.5">1.16.5</option>
+                                <option value="1.16.4">1.16.4</option>
+                                <option value="1.16.3">1.16.3</option>
+                                <option value="1.16.2">1.16.2</option>
+                                <option value="1.16.1">1.16.1</option>
+                                <option value="1.15.2">1.15.2</option>
+                                <option value="1.15.1">1.15.1</option>
+                                <option value="1.15">1.15</option>
+                                <option value="1.14.4">1.14.4</option>
+                                <option value="1.14.3">1.14.3</option>
+                                <option value="1.14.2">1.14.2</option>
+                                <option value="1.14.1">1.14.1</option>
+                                <option value="1.14">1.14</option>
+                                <option value="1.13.2">1.13.2</option>
+                                <option value="1.13.1">1.13.1</option>
+                                <option value="1.13">1.13</option>
+                                <option value="1.12.2">1.12.2</option>
+                                <option value="1.12.1">1.12.1</option>
+                                <option value="1.12">1.12</option>
+                                <option value="1.11.2">1.11.2</option>
+                                <option value="1.11.1">1.11.1</option>
+                                <option value="1.11">1.11</option>
+                                <option value="1.10.2">1.10.2</option>
+                                <option value="1.10.1">1.10.1</option>
+                                <option value="1.10">1.10</option>
+                                <option value="1.9.4">1.9.4</option>
+                                <option value="1.9.3">1.9.3</option>
+                                <option value="1.9.2">1.9.2</option>
+                                <option value="1.9.1">1.9.1</option>
+                                <option value="1.9">1.9</option>
+                                <option value="1.8.9">1.8.9</option>
+                                <option value="1.8.8">1.8.8</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group tooltip" data-tooltip="Select your API version">
+                    <label>API Version:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🔧</span>
+                        <div class="input-with-icon">
+                            <select id="apiVersion">
+                                <option value="1.13">1.13</option>
+                                <option value="1.14">1.14</option>
+                                <option value="1.15">1.15</option>
+                                <option value="1.16">1.16</option>
+                                <option value="1.17">1.17</option>
+                                <option value="1.18">1.18</option>
+                                <option value="1.19">1.19</option>
+                                <option value="1.20">1.20</option>
+                                <option value="1.21">1.21</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group tooltip" data-tooltip="Select your Java version">
+                    <label>Java Version:</label>
+                    <div class="input-group">
+                        <span class="input-icon">☕</span>
+                        <div class="input-with-icon">
+                            <select id="javaVersion">
+                                <option value="21">Java 21</option>
+                                <option value="17">Java 17</option>
+                                <option value="16">Java 16</option>
+                                <option value="11">Java 11</option>
+                                <option value="8">Java 8</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group tooltip" data-tooltip="Select your API platform">
+                    <label>API Type:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🛠️</span>
+                        <div class="input-with-icon">
+                            <select id="apiType">
+                                <option value="spigot">Spigot</option>
+                                <option value="paper">Paper</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="useLombok" style="width: auto; margin: 0;">
+                    Enable Lombok support
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">
+                <span class="input-icon">🔗</span>
+                Dependencies
+            </div>
+            <div class="form-group">
+                <label>Dependencies:</label>
+                <div class="input-group">
+                    <span class="input-icon">⚡</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="dependencies" placeholder="Vault,WorldEdit,WorldGuard">
+                    </div>
+                </div>
+                <small style="color: var(--vscode-descriptionForeground); margin-top: 4px; display: block;">Comma-separated list of required plugins</small>
+            </div>
+            <div class="form-group">
+                <label>Soft Dependencies:</label>
+                <div class="input-group">
+                    <span class="input-icon">🔌</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="softDependencies" placeholder="PlaceholderAPI,Citizens">
+                    </div>
+                </div>
+                <small style="color: var(--vscode-descriptionForeground); margin-top: 4px; display: block;">Comma-separated list of optional plugins</small>
+            </div>
+        </div>
+
+        <button onclick="createPlugin()">
+            <span class="input-icon">🚀</span>
+            Create Plugin
+        </button>
+    </div>
+    <script>
+        const vscode = acquireVsCodeApi();
+        function createPlugin() {
+            // Validar campos requeridos
+            const requiredFields = ['projectName', 'packageName', 'pluginVersion', 'authorName'];
+            for (const field of requiredFields) {
+                const element = document.getElementById(field);
+                if (!element.value) {
+                    alert(`Please fill in the ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+                    return;
+                }
+            }
+
+            const data = {
+                projectName: document.getElementById('projectName').value,
+                packageName: document.getElementById('packageName').value,
+                pluginVersion: document.getElementById('pluginVersion').value,
+                authorName: document.getElementById('authorName').value,
+                website: document.getElementById('website').value || 'http://www.example.com',
+                minecraftVersion: document.getElementById('minecraftVersion').value,
+                apiVersion: document.getElementById('apiVersion').value,
+                javaVersion: document.getElementById('javaVersion').value,
+                apiType: document.getElementById('apiType').value,
+                useLombok: document.getElementById('useLombok').checked,
+                dependencies: document.getElementById('dependencies').value,
+                softDependencies: document.getElementById('softDependencies').value
+            };
+            vscode.postMessage({ command: 'createPlugin', data });
+        }
+    </script>
+</body>
+</html>
