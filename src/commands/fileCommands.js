@@ -17,8 +17,11 @@ async function addCommand(context) {
         return;
     }
 
+    const isKotlin = basePackage.path.includes('src/main/kotlin') || basePackage.path.includes('src\\main\\kotlin');
+    const ext = isKotlin ? 'kt' : 'java';
+
     const commandName = await vscode.window.showInputBox({
-        prompt: 'Enter command name (without "Command" suffix)',
+        prompt: `Enter command name (without "Command" suffix)`,
         placeHolder: 'Example: Teleport',
         validateInput: text => {
             if (!text) return 'Command name is required';
@@ -52,9 +55,35 @@ async function addCommand(context) {
     );
 
     fs.mkdirSync(commandDir, { recursive: true });
-    const commandFile = path.join(commandDir, `${commandName}Command.java`);
+    const commandFile = path.join(commandDir, `${commandName}Command.${ext}`);
 
-    const commandContent = `package ${basePackage.name}.${packageName};
+    let content = '';
+    if (isKotlin) {
+        content = `package ${basePackage.name}.${packageName}
+
+import org.bukkit.command.Command
+import org.bukkit.command.CommandExecutor
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+
+class ${commandName}Command : CommandExecutor {
+    
+    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
+        if (sender !is Player) {
+            sender.sendMessage("This command can only be used by players")
+            return true
+        }
+
+        val player = sender
+
+        // Add your command logic here
+        
+
+        return true
+    }
+}`;
+    } else {
+        content = `package ${basePackage.name}.${packageName};
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -78,14 +107,14 @@ public class ${commandName}Command implements CommandExecutor {
         return true;
     }
 }`;
+    }
 
-    fs.writeFileSync(commandFile, commandContent);
+    fs.writeFileSync(commandFile, content);
     
     const doc = await vscode.workspace.openTextDocument(commandFile);
     const editor = await vscode.window.showTextDocument(doc);
     
-    // Posicionar cursor donde va el código
-    const position = new vscode.Position(15, 8);
+    const position = isKotlin ? new vscode.Position(14, 8) : new vscode.Position(15, 8);
     editor.selection = new vscode.Selection(position, position);
 }
 
@@ -101,6 +130,9 @@ async function addListener(context) {
         vscode.window.showErrorMessage('Could not find plugin package');
         return;
     }
+
+    const isKotlin = basePackage.path.includes('src/main/kotlin') || basePackage.path.includes('src\\main\\kotlin');
+    const ext = isKotlin ? 'kt' : 'java';
 
     const events = [
         'PlayerJoin', 'PlayerQuit', 'PlayerMove',
@@ -168,9 +200,26 @@ async function addListener(context) {
     );
 
     fs.mkdirSync(listenerDir, { recursive: true });
-    const listenerFile = path.join(listenerDir, `${listenerName}Listener.java`);
+    const listenerFile = path.join(listenerDir, `${listenerName}Listener.${ext}`);
 
-    const listenerContent = `package ${basePackage.name}.${packageName};
+    let content = '';
+    if (isKotlin) {
+        content = `package ${basePackage.name}.${packageName}
+
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.${eventName.split(/(?=[A-Z])/)[0].toLowerCase()}.${eventName}Event
+
+class ${listenerName}Listener : Listener {
+    
+    @EventHandler
+    fun on${eventName}(event: ${eventName}Event) {
+        // Add your event handling logic here
+        
+    }
+}`;
+    } else {
+        content = `package ${basePackage.name}.${packageName};
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -178,20 +227,20 @@ import org.bukkit.event.${eventName.split(/(?=[A-Z])/)[0].toLowerCase()}.${event
 
 public class ${listenerName}Listener implements Listener {
     
-    @EventHandler
+    @Override
     public void on${eventName}(${eventName}Event event) {
         // Add your event handling logic here
         
     }
 }`;
+    }
 
-    fs.writeFileSync(listenerFile, listenerContent);
+    fs.writeFileSync(listenerFile, content);
     
     const doc = await vscode.workspace.openTextDocument(listenerFile);
     const editor = await vscode.window.showTextDocument(doc);
     
-    // Posicionar cursor donde va el código
-    const position = new vscode.Position(9, 8);
+    const position = isKotlin ? new vscode.Position(9, 8) : new vscode.Position(10, 8);
     editor.selection = new vscode.Selection(position, position);
 }
 

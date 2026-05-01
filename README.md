@@ -43,5 +43,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <div align="center">
+    <h3>Community</h3>
+    <p>Join our <a href="https://discord.gg/6dGAUbxWRU">Discord Community</a>!</p>
+    <br>
     <p>Maintained by Gabodev</p>
 </div>
