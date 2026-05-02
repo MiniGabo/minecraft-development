@@ -147,6 +147,5 @@
     "eslint": "^9.13.0"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.7.2"
   }
 }
