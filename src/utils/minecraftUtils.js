@@ -1,4 +1,3 @@
-const axios = require('axios');
 const { XMLParser } = require('fast-xml-parser');
 
 const FALLBACK_VERSIONS = [
@@ -25,10 +24,11 @@ const FALLBACK_VERSIONS = [
 async function fetchMinecraftVersions() {
     try {
         const url = 'https://hub.spigotmc.org/nexus/repository/public/org/spigotmc/spigot-api/maven-metadata.xml';
-        const response = await axios.get(url);
+        const response = await fetch(url);
         
+        const data = await response.text();
         const parser = new XMLParser();
-        const jsonObj = parser.parse(response.data);
+        const jsonObj = parser.parse(data);
         const versionsList = jsonObj?.metadata?.versioning?.versions?.version;
 
         if (Array.isArray(versionsList)) {

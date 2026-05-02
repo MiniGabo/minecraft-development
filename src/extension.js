@@ -1,5 +1,4 @@
 const vscode = require('vscode');
-const axios = require('axios');
 const CreatePluginPanel = require('./webview/createPluginPanel');
 const { PluginStructureProvider, PluginToolsProvider } = require('./views/pluginExplorer');
 const { addCommand, addListener, addConfig } = require('./commands/fileCommands');
