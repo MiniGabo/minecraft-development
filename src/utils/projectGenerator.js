@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const { getLatestSpigotVersion } = require('./minecraftUtils');
 
 class ProjectGenerator {
     constructor(data) {
@@ -110,7 +111,7 @@ public class ${this.data.projectName} extends JavaPlugin {
         const repoUrl = this.isPaper ? 'https://repo.papermc.io/repository/maven-public/' : 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/';
         const depGroupId = this.isPaper ? 'io.papermc.paper' : 'org.spigotmc';
         const depArtifactId = this.isPaper ? 'paper-api' : 'spigot-api';
-        const depVersion = `${this.data.minecraftVersion}-R0.1-SNAPSHOT`;
+        const depVersion = this.isPaper ? `${this.data.minecraftVersion}-R0.1-SNAPSHOT` : `${await getLatestSpigotVersion(this.data.minecraftVersion)}`;
 
         let lombokDependency = '';
         let lombokPlugin = '';
@@ -227,7 +228,8 @@ public class ${this.data.projectName} extends JavaPlugin {
         const repoUrl = this.isPaper ? 'https://repo.papermc.io/repository/maven-public/' : 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/';
         const depGroupId = this.isPaper ? 'io.papermc.paper' : 'org.spigotmc';
         const depArtifactId = this.isPaper ? 'paper-api' : 'spigot-api';
-        const depVersion = `${this.data.minecraftVersion}-R0.1-SNAPSHOT`;
+        const depVersion = this.isPaper ? `${this.data.minecraftVersion}-R0.1-SNAPSHOT` : `${await getLatestSpigotVersion(this.data.minecraftVersion)}`;
+
 
         let buildGradle = '';
         if (isKotlinDSL) {
