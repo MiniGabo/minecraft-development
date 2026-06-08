@@ -1,9 +1,33 @@
 # Change Log
 
-All notable changes to the "Minecraft Plugin Development" extension will be documented in this file.
+All notable changes to the "Minecraft Development" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.0] - 2026-06-07
+
+### Added
+- **Complete Rebranding**: The extension is now **Minecraft Development**, supporting the entire ecosystem (Plugins, Fabric, Forge).
+- **Forge Support**: Added project scaffolding for both Modern Forge and Legacy (1.8 - 1.12.2).
+- **Fabric Enhancements**: New specialized tools for Fabric development:
+  - **Add Fabric Item**: Auto-generates class, JSON model, and localizations.
+  - **Add Fabric Block**: Auto-generates class, blockstate, models, and BlockItem registration.
+  - **Add Fabric Recipe**: Scaffolds shaped recipe JSON files.
+  - **Add Fabric Entity**: Fully automated entity creation with automatic registration in the ModInitializer.
+- **Smart Registration**: Fabric items, blocks, and entities are now automatically registered in the main mod class upon creation.
+- **Real-time Version Fetching**:
+  - Live data from Fabric Meta API (filtering stable releases).
+  - Live data from Forge Maven (supporting legacy and modern eras).
+  - Live data from Spigot Nexus.
+- **Dynamic Project Wizard**: Reactive UI that adapts fields and build systems based on the selected platform.
+
+### Improved
+- **Contextual UI**: Side bar tools now adapt to show only relevant commands for the current project type.
+- **Status Bar 2.0**: New intelligent status bar that detects and displays the current environment (Mod/Plugin) and project type.
+- **File Detection**: Enhanced Project Structure view with specific icons for Mixins, ModInitializers, and more.
+
+---
 
 ## [1.1.0] - 2026-05-01
 

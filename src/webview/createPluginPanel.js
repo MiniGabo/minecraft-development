@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
-const { fetchMinecraftVersions } = require('../utils/minecraftUtils');
+const { fetchMinecraftVersions, fetchFabricGameVersions, fetchForgeVersions } = require('../utils/minecraftUtils');
 const ProjectGenerator = require('../utils/projectGenerator');
 
 class CreatePluginPanel {
@@ -17,8 +17,8 @@ class CreatePluginPanel {
         }
 
         const panel = vscode.window.createWebviewPanel(
-            'createMinecraftPlugin',
-            'Create Minecraft Plugin',
+            'createMinecraftProject',
+            'New Minecraft Project',
             column || vscode.ViewColumn.One,
             {
                 enableScripts: true,
@@ -43,13 +43,16 @@ class CreatePluginPanel {
         this.context = context;
         this._disposables = [];
 
-        this._update();
+        this._initHtml();
 
         this.panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
         this.panel.webview.onDidReceiveMessage(
             async message => {
                 switch (message.command) {
+                    case 'ready':
+                        await this._sendVersions();
+                        return;
                     case 'createPlugin':
                         await this._createPlugin(message.data);
                         return;
@@ -70,6 +73,27 @@ class CreatePluginPanel {
                 disposable.dispose();
             }
         }
+    }
+
+    async _initHtml() {
+        // Initial HTML load
+        this.panel.webview.html = await this._getHtmlContent([]);
+    }
+
+    async _sendVersions() {
+        const [spigotVersions, fabricVersions, forgeVersions] = await Promise.all([
+            fetchMinecraftVersions(),
+            fetchFabricGameVersions(),
+            fetchForgeVersions()
+        ]);
+
+        // Send all version sets to webview
+        this.panel.webview.postMessage({
+            command: 'setVersions',
+            spigot: spigotVersions,
+            fabric: fabricVersions,
+            forge: forgeVersions
+        });
     }
 
     async _createPlugin(data) {
@@ -93,29 +117,32 @@ class CreatePluginPanel {
             await vscode.workspace.fs.createDirectory(basePackagePath);
             await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(pluginDirUri, 'src', 'main', 'resources'));
 
-            // Create sub-packages
-            const packages = ['managers', 'listeners', 'utils'];
+            // Create sub-packages based on project type
+            let packages = [];
+            if (data.projectType === 'plugin') {
+                packages = ['managers', 'listeners', 'utils'];
+            } else if (data.projectType === 'fabric') {
+                packages = ['mixin', 'registry', 'items'];
+            } else if (data.projectType === 'forge') {
+                packages = ['init', 'item', 'block'];
+            }
+
             for (const pkg of packages) {
                 await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(basePackagePath, pkg));
             }
 
-            // Generate project using the new generator
-            const generator = new ProjectGenerator(data);
+            // Generate project using the generator factory
+            const generator = ProjectGenerator.createGenerator(data);
             await generator.generate(pluginDirUri, basePackagePath);
 
             vscode.commands.executeCommand('vscode.openFolder', pluginDirUri);
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to create plugin: ${error.message}`);
+            vscode.window.showErrorMessage(`Failed to create project: ${error.message}`);
         }
     }
 
-    async _update() {
-        this.panel.webview.html = await this._getHtmlContent();
-    }
-
-    async _getHtmlContent() {
-        const versions = await fetchMinecraftVersions();
-        const htmlUri = vscode.Uri.file(path.join(this.context.extensionPath, 'src', 'resources', 'createPlugin.html'));
+    async _getHtmlContent(versions) {
+        const htmlUri = vscode.Uri.file(path.join(this.context.extensionPath, 'src', 'resources', 'createProject.html'));
         const htmlBuffer = await vscode.workspace.fs.readFile(htmlUri);
         let htmlContent = Buffer.from(htmlBuffer).toString('utf8');
         

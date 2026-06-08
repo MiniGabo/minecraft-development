@@ -2,27 +2,40 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Finds the base package and source path for a Minecraft plugin project.
- * Supports both Maven and Gradle, and Java and Kotlin.
+ * Finds the base package and source path for a Minecraft project.
  */
 async function findBasePackage(workspacePath) {
-    // 1. Determine build system and get groupId/packageName
     let packageName = null;
     
-    // Check Maven
-    const pomPath = path.join(workspacePath, 'pom.xml');
-    if (fs.existsSync(pomPath)) {
-        const pomContent = fs.readFileSync(pomPath, 'utf8');
-        const groupIdMatch = /<groupId>(.*?)<\/groupId>/.exec(pomContent);
-        if (groupIdMatch) packageName = groupIdMatch[1];
-    } 
+    // 1. Try to get package from fabric.mod.json if it exists
+    const fabricModJsonPath = path.join(workspacePath, 'src', 'main', 'resources', 'fabric.mod.json');
+    if (fs.existsSync(fabricModJsonPath)) {
+        try {
+            const modJson = JSON.parse(fs.readFileSync(fabricModJsonPath, 'utf8'));
+            if (modJson.entrypoints && modJson.entrypoints.main && modJson.entrypoints.main.length > 0) {
+                const mainClass = modJson.entrypoints.main[0];
+                packageName = mainClass.substring(0, mainClass.lastIndexOf('.'));
+            }
+        } catch (e) {}
+    }
+
+    // 2. Check Maven (pom.xml)
+    if (!packageName) {
+        const pomPath = path.join(workspacePath, 'pom.xml');
+        if (fs.existsSync(pomPath)) {
+            const pomContent = fs.readFileSync(pomPath, 'utf8');
+            const groupIdMatch = /<groupId>(.*?)<\/groupId>/.exec(pomContent);
+            if (groupIdMatch) packageName = groupIdMatch[1];
+        } 
+    }
     
-    // Check Gradle (if Maven failed or for Gradle projects)
+    // 3. Check Gradle (build.gradle)
     if (!packageName) {
         const buildGradlePath = path.join(workspacePath, 'build.gradle');
         const buildGradleKtsPath = path.join(workspacePath, 'build.gradle.kts');
-        let gradleContent = '';
+        const gradlePropsPath = path.join(workspacePath, 'gradle.properties');
         
+        let gradleContent = '';
         if (fs.existsSync(buildGradlePath)) {
             gradleContent = fs.readFileSync(buildGradlePath, 'utf8');
         } else if (fs.existsSync(buildGradleKtsPath)) {
@@ -31,13 +44,25 @@ async function findBasePackage(workspacePath) {
 
         if (gradleContent) {
             const groupMatch = /group\s*=\s*['"](.*?)['"]/.exec(gradleContent);
-            if (groupMatch) packageName = groupMatch[1];
+            if (groupMatch) {
+                packageName = groupMatch[1];
+            } else if (gradleContent.includes('project.maven_group') && fs.existsSync(gradlePropsPath)) {
+                // Handle variable reference to gradle.properties
+                const propsContent = fs.readFileSync(gradlePropsPath, 'utf8');
+                const mavenGroupMatch = /maven_group\s*=\s*(.*)/.exec(propsContent);
+                if (mavenGroupMatch) packageName = mavenGroupMatch[1].trim();
+            }
         }
+    }
+
+    if (!packageName) {
+        // Fallback: try to find by scanning src/main/java
+        packageName = await findPackageByScanning(workspacePath);
     }
 
     if (!packageName) return null;
 
-    // 2. Determine source directory (Kotlin takes precedence if both exist)
+    // Determine source directory
     const kotlinPath = path.join(workspacePath, 'src', 'main', 'kotlin');
     const javaPath = path.join(workspacePath, 'src', 'main', 'java');
     
@@ -50,7 +75,6 @@ async function findBasePackage(workspacePath) {
 
     if (!srcPath) return null;
 
-    // 3. Resolve the full package path
     const packagePath = path.join(srcPath, ...packageName.split('.'));
 
     return {
@@ -59,6 +83,34 @@ async function findBasePackage(workspacePath) {
         srcRoot: srcPath,
         isKotlin: srcPath.endsWith('kotlin')
     };
+}
+
+async function findPackageByScanning(workspacePath) {
+    const javaPath = path.join(workspacePath, 'src', 'main', 'java');
+    if (!fs.existsSync(javaPath)) return null;
+
+    // Simple heuristic: find the first directory that contains a .java file
+    return scanForFirstPackage(javaPath, "");
+}
+
+function scanForFirstPackage(currentDir, currentPackage) {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    
+    // Check if there are java files here
+    const hasJava = entries.some(e => e.isFile() && e.name.endsWith('.java'));
+    if (hasJava) return currentPackage;
+
+    // Otherwise recurse
+    for (const entry of entries) {
+        if (entry.isDirectory()) {
+            const result = scanForFirstPackage(
+                path.join(currentDir, entry.name),
+                currentPackage ? `${currentPackage}.${entry.name}` : entry.name
+            );
+            if (result) return result;
+        }
+    }
+    return null;
 }
 
 module.exports = {

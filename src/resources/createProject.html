@@ -143,13 +143,7 @@
             padding-bottom: 10px;
         }
 
-        .tooltip {
-            position: relative;
-        }
-
         small {
-            display: block;
-            margin-top: 5px;
             color: var(--vscode-descriptionForeground);
             font-size: 12px;
         }
@@ -165,12 +159,70 @@
         .checkbox-group input {
             width: auto;
         }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--vscode-editor-background);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--vscode-textLink-foreground);
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
     <div class="form-container">
         <div class="minecraft-header">
-            <h1 class="minecraft-title">🎮 Create Minecraft Plugin</h1>
+            <h1 class="minecraft-title">🎮 New Minecraft Project</h1>
+        </div>
+
+        <!-- Project Type -->
+        <div class="form-section">
+            <div class="section-title">
+                <span>🚀</span> Project Type
+            </div>
+            <div class="form-group">
+                <label>Type:</label>
+                <div class="input-group">
+                    <span class="input-icon">🛠️</span>
+                    <div class="input-with-icon">
+                        <select id="projectType">
+                            <option value="plugin">Minecraft Plugin (Spigot/Paper)</option>
+                            <option value="fabric">Fabric Mod</option>
+                            <option value="forge">Forge Mod</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Project Details -->
@@ -184,7 +236,7 @@
                     <div class="input-group">
                         <span class="input-icon">📄</span>
                         <div class="input-with-icon">
-                            <input type="text" id="projectName" placeholder="MyAwesomePlugin" required>
+                            <input type="text" id="projectName" placeholder="MyAwesomeProject" required>
                         </div>
                     </div>
                 </div>
@@ -193,17 +245,17 @@
                     <div class="input-group">
                         <span class="input-icon">📦</span>
                         <div class="input-with-icon">
-                            <input type="text" id="packageName" placeholder="com.example.plugin" required>
+                            <input type="text" id="packageName" placeholder="com.example.project" required>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Plugin Info -->
+        <!-- Metadata Info -->
         <div class="form-section">
             <div class="section-title">
-                <span>ℹ️</span> Plugin Information
+                <span>ℹ️</span> Information
             </div>
             <div class="form-grid">
                 <div class="form-group">
@@ -226,11 +278,20 @@
                 </div>
             </div>
             <div class="form-group">
+                <label>Description:</label>
+                <div class="input-group">
+                    <span class="input-icon">📝</span>
+                    <div class="input-with-icon">
+                        <input type="text" id="description" placeholder="A short description" value="A Minecraft development project.">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
                 <label>Website (optional):</label>
                 <div class="input-group">
                     <span class="input-icon">🌐</span>
                     <div class="input-with-icon">
-                        <input type="text" id="website" placeholder="https://example.com">
+                        <input type="text" id="website" placeholder="https://example.com" value="https://example.com">
                     </div>
                 </div>
             </div>
@@ -248,13 +309,12 @@
                         <span class="input-icon">🎮</span>
                         <div class="input-with-icon">
                             <select id="minecraftVersion">
-                                <!-- Versions will be populated dynamically -->
-                                <option value="1.21">1.21</option>
+                                <!-- Populated dynamically -->
                             </select>
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="apiVersionGroup">
                     <label>API Version:</label>
                     <div class="input-group">
                         <span class="input-icon">🔧</span>
@@ -266,9 +326,6 @@
                                 <option value="1.18">1.18</option>
                                 <option value="1.17">1.17</option>
                                 <option value="1.16">1.16</option>
-                                <option value="1.15">1.15</option>
-                                <option value="1.14">1.14</option>
-                                <option value="1.13">1.13</option>
                             </select>
                         </div>
                     </div>
@@ -281,15 +338,14 @@
                             <select id="javaVersion">
                                 <option value="21">Java 21</option>
                                 <option value="17">Java 17</option>
-                                <option value="16">Java 16</option>
                                 <option value="11">Java 11</option>
                                 <option value="8">Java 8</option>
                             </select>
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>API Type:</label>
+                <div class="form-group" id="apiTypeGroup">
+                    <label>Platform:</label>
                     <div class="input-group">
                         <span class="input-icon">🛠️</span>
                         <div class="input-with-icon">
@@ -326,48 +382,170 @@
                     </div>
                 </div>
             </div>
-            <label class="checkbox-group">
+            <label class="checkbox-group" id="lombokGroup">
                 <input type="checkbox" id="useLombok">
                 <span>Enable Lombok support (Java only)</span>
             </label>
         </div>
 
-        <!-- Dependencies -->
-        <div class="form-section">
+        <!-- Dependencies / Platform Config -->
+        <div class="form-section" id="dependenciesSection">
             <div class="section-title">
-                <span>🔗</span> Dependencies
+                <span id="depIcon">🔗</span> <span id="depTitle">Dependencies</span>
             </div>
-            <div class="form-group">
-                <label>Dependencies:</label>
-                <div class="input-group">
-                    <span class="input-icon">⚡</span>
-                    <div class="input-with-icon">
-                        <input type="text" id="dependencies" placeholder="Vault, WorldEdit">
+            
+            <div id="pluginConfig">
+                <div class="form-group">
+                    <label>Dependencies:</label>
+                    <div class="input-group">
+                        <span class="input-icon">⚡</span>
+                        <div class="input-with-icon">
+                            <input type="text" id="dependencies" placeholder="Vault, WorldEdit">
+                        </div>
+                    </div>
+                    <small>Comma-separated list of required dependencies</small>
+                </div>
+                <div class="form-group">
+                    <label>Soft Dependencies:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🔌</span>
+                        <div class="input-with-icon">
+                            <input type="text" id="softDependencies" placeholder="PlaceholderAPI">
+                        </div>
+                    </div>
+                    <small>Comma-separated list of optional dependencies</small>
+                </div>
+            </div>
+
+            <div id="fabricConfig" class="hidden">
+                <div class="form-group">
+                    <label>Fabric API Version:</label>
+                    <div class="input-group">
+                        <span class="input-icon">🛠️</span>
+                        <div class="input-with-icon">
+                            <input type="text" id="fabricApiVersion" value="latest" placeholder="latest">
+                        </div>
+                    </div>
+                    <small>Leave as 'latest' for recommended version</small>
+                </div>
+            </div>
+
+            <div id="forgeConfig" class="hidden">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>License:</label>
+                        <div class="input-group">
+                            <span class="input-icon">📜</span>
+                            <div class="input-with-icon">
+                                <input type="text" id="forgeLicense" value="MIT">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Credits:</label>
+                        <div class="input-group">
+                            <span class="input-icon">🙌</span>
+                            <div class="input-with-icon">
+                                <input type="text" id="forgeCredits" placeholder="Optional credits">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <small>Comma-separated list of required plugins</small>
-            </div>
-            <div class="form-group">
-                <label>Soft Dependencies:</label>
-                <div class="input-group">
-                    <span class="input-icon">🔌</span>
-                    <div class="input-with-icon">
-                        <input type="text" id="softDependencies" placeholder="PlaceholderAPI">
-                    </div>
-                </div>
-                <small>Comma-separated list of optional plugins</small>
             </div>
         </div>
 
-        <button onclick="createPlugin()">🚀 Create Plugin Project</button>
+        <button onclick="createProject()">🚀 Create Project</button>
     </div>
 
     <script>
         const vscode = acquireVsCodeApi();
 
-        // Disable Lombok checkbox if language is Kotlin
+        const projectType = document.getElementById('projectType');
+        const buildSystem = document.getElementById('buildSystem');
         const languageSelect = document.getElementById('language');
         const lombokCheckbox = document.getElementById('useLombok');
+        
+        const apiVersionGroup = document.getElementById('apiVersionGroup');
+        const apiTypeGroup = document.getElementById('apiTypeGroup');
+        
+        const depTitle = document.getElementById('depTitle');
+        const pluginConfig = document.getElementById('pluginConfig');
+        const fabricConfig = document.getElementById('fabricConfig');
+        const forgeConfig = document.getElementById('forgeConfig');
+
+        const minecraftVersionSelect = document.getElementById('minecraftVersion');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let versionData = {
+            spigot: [],
+            fabric: [],
+            forge: []
+        };
+
+        // Notify extension that we are ready
+        vscode.postMessage({ command: 'ready' });
+
+        window.addEventListener('message', event => {
+            const message = event.data;
+            if (message.command === 'setVersions') {
+                versionData.spigot = message.spigot;
+                versionData.fabric = message.fabric;
+                versionData.forge = message.forge;
+                updateVersionList();
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+
+        function updateVersionList() {
+            const type = projectType.value;
+            minecraftVersionSelect.innerHTML = '';
+            
+            let filteredVersions = [];
+            if (type === 'fabric') filteredVersions = versionData.fabric;
+            else if (type === 'forge') filteredVersions = versionData.forge;
+            else filteredVersions = versionData.spigot;
+
+            if (filteredVersions.length === 0) filteredVersions = versionData.spigot;
+
+            filteredVersions.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v;
+                option.text = v;
+                minecraftVersionSelect.appendChild(option);
+            });
+        }
+
+        projectType.addEventListener('change', () => {
+            const type = projectType.value;
+            updateVersionList();
+            
+            // Hide all platform sections first
+            pluginConfig.classList.add('hidden');
+            fabricConfig.classList.add('hidden');
+            forgeConfig.classList.add('hidden');
+            
+            if (type === 'fabric') {
+                apiVersionGroup.classList.add('hidden');
+                apiTypeGroup.classList.add('hidden');
+                fabricConfig.classList.remove('hidden');
+                depTitle.innerText = "Fabric Configuration";
+                buildSystem.value = 'gradle';
+                for (let opt of buildSystem.options) if (opt.value === 'maven') opt.disabled = true;
+            } else if (type === 'forge') {
+                apiVersionGroup.classList.add('hidden');
+                apiTypeGroup.classList.add('hidden');
+                forgeConfig.classList.remove('hidden');
+                depTitle.innerText = "Forge Configuration";
+                buildSystem.value = 'gradle';
+                for (let opt of buildSystem.options) if (opt.value === 'maven') opt.disabled = true;
+            } else {
+                apiVersionGroup.classList.remove('hidden');
+                apiTypeGroup.classList.remove('hidden');
+                pluginConfig.classList.remove('hidden');
+                depTitle.innerText = "Dependencies";
+                for (let opt of buildSystem.options) opt.disabled = false;
+            }
+        });
 
         languageSelect.addEventListener('change', () => {
             if (languageSelect.value === 'kotlin') {
@@ -380,30 +558,23 @@
             }
         });
 
-        function createPlugin() {
+        function createProject() {
             const requiredFields = ['projectName', 'packageName', 'pluginVersion', 'authorName'];
             for (const field of requiredFields) {
-                const element = document.getElementById(field);
-                if (!element.value) {
-                    alert(`Please fill in the ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+                if (!document.getElementById(field).value) {
+                    alert(`Please fill in the ${field}`);
                     return;
                 }
             }
 
-            const language = document.getElementById('language').value;
-            const useLombok = document.getElementById('useLombok').checked;
-
-            if (useLombok && language !== 'java') {
-                alert('Lombok is only supported for Java projects.');
-                return;
-            }
-
             const data = {
+                projectType: projectType.value,
                 projectName: document.getElementById('projectName').value,
                 packageName: document.getElementById('packageName').value,
                 pluginVersion: document.getElementById('pluginVersion').value,
                 authorName: document.getElementById('authorName').value,
-                website: document.getElementById('website').value || 'https://example.com',
+                description: document.getElementById('description').value,
+                website: document.getElementById('website').value,
                 minecraftVersion: document.getElementById('minecraftVersion').value,
                 apiVersion: document.getElementById('apiVersion').value,
                 javaVersion: document.getElementById('javaVersion').value,
@@ -411,8 +582,14 @@
                 language: document.getElementById('language').value,
                 buildSystem: document.getElementById('buildSystem').value,
                 useLombok: document.getElementById('useLombok').checked,
+                // Plugin specific
                 dependencies: document.getElementById('dependencies').value,
-                softDependencies: document.getElementById('softDependencies').value
+                softDependencies: document.getElementById('softDependencies').value,
+                // Fabric specific
+                fabricApiVersion: document.getElementById('fabricApiVersion').value,
+                // Forge specific
+                forgeLicense: document.getElementById('forgeLicense').value,
+                forgeCredits: document.getElementById('forgeCredits').value
             };
 
             vscode.postMessage({

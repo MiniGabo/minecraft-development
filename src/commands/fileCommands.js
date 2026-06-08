@@ -11,6 +11,13 @@ async function addCommand(context) {
         return;
     }
 
+    const isFabric = fs.existsSync(path.join(workspaceFolders[0].uri.fsPath, 'src', 'main', 'resources', 'fabric.mod.json'));
+    
+    if (isFabric) {
+        vscode.window.showInformationMessage('This feature is currently optimized for Spigot/Paper. Fabric support for specific components is coming soon!');
+        return;
+    }
+
     const basePackage = await findBasePackage(workspaceFolders[0].uri.fsPath);
     if (!basePackage) {
         vscode.window.showErrorMessage('Could not find plugin package');
@@ -122,6 +129,13 @@ async function addListener(context) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
         vscode.window.showErrorMessage('No workspace folder found');
+        return;
+    }
+
+    const isFabric = fs.existsSync(path.join(workspaceFolders[0].uri.fsPath, 'src', 'main', 'resources', 'fabric.mod.json'));
+    
+    if (isFabric) {
+        vscode.window.showInformationMessage('This feature is currently optimized for Spigot/Paper. Fabric support for specific components is coming soon!');
         return;
     }
 

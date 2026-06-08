@@ -1,5 +1,8 @@
+const vscode = require('vscode');
+
 const FALLBACK_VERSIONS = [
-    '1.21.11','1.21.10', '1.21.9', '1.21.8', '1.21.7', '1.21.6', '1.21.5', '1.21.4', '1.21.3', '1.21.2', '1.21.1', '1.21',
+    '26.2.1', '26.2', '26.1.1', '26.1',
+    '1.21.1', '1.21',
     '1.20.6', '1.20.5', '1.20.4', '1.20.3', '1.20.2', '1.20.1', '1.20',
     '1.19.4', '1.19.3', '1.19.2', '1.19.1', '1.19',
     '1.18.2', '1.18.1', '1.18',
@@ -17,15 +20,14 @@ const FALLBACK_VERSIONS = [
 
 /**
  * Fetches Minecraft versions from Spigot Nexus repository.
- * @returns {Promise<string[]>} List of versions in descending order.
  */
 async function fetchMinecraftVersions() {
     try {
         const url = 'https://hub.spigotmc.org/nexus/repository/public/org/spigotmc/spigot-api/maven-metadata.xml';
         const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.text();
         
-        // Extract all version tags using regex
         const versionRegex = /<version>([\d.]+-R0\.\d+-SNAPSHOT)<\/version>/g;
         const versionsList = [];
         let match;
@@ -35,17 +37,73 @@ async function fetchMinecraftVersions() {
         }
         
         if (versionsList.length > 0) {
-            return versionsList
-                .filter(v => v.endsWith('-R0.1-SNAPSHOT'))
-                .map(v => v.replace('-R0.1-SNAPSHOT', ''))
-                .reverse();
+            const mcVersions = [...new Set(versionsList.map(v => v.replace(/-R\d+\.\d+-SNAPSHOT/, '')))];
+            return _sortVersions(mcVersions);
         }
         
         return FALLBACK_VERSIONS;
     } catch (error) {
-        console.error('Failed to fetch Minecraft versions:', error.message);
+        vscode.window.showErrorMessage(`Failed to fetch Spigot versions: ${error.message}. Using fallback list.`);
         return FALLBACK_VERSIONS;
     }
+}
+
+/**
+ * Fetches stable game versions from Fabric Meta API
+ */
+async function fetchFabricGameVersions() {
+    try {
+        const response = await fetch('https://meta.fabricmc.net/v2/versions/game');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return data
+            .filter(v => v.stable)
+            .map(v => v.version);
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to fetch Fabric versions: ${error.message}`);
+        return FALLBACK_VERSIONS.filter(v => parseInt(v.split('.')[1]) >= 14);
+    }
+}
+/**
+ * Fetches versions from Forge Maven metadata
+ */
+async function fetchForgeVersions() {
+    try {
+        const url = 'https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml';
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.text();
+
+        // Forge versions are like 1.20.1-47.2.0 or 1.8.9-11.15.1.2318
+        const versionRegex = /<version>([\d.]+)-[\d.]+.*?<\/version>/g;
+        const mcVersions = new Set();
+        let match;
+
+        while ((match = versionRegex.exec(data)) !== null) {
+            mcVersions.add(match[1]);
+        }
+
+        if (mcVersions.size > 0) {
+            return _sortVersions(Array.from(mcVersions));
+        }
+        return FALLBACK_VERSIONS;
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to fetch Forge versions: ${error.message}`);
+        return FALLBACK_VERSIONS;
+    }
+}
+
+function _sortVersions(versions) {
+    return versions.sort((a, b) => {
+        const partsA = a.split('.').map(Number);
+        const partsB = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+            const numA = partsA[i] || 0;
+            const numB = partsB[i] || 0;
+            if (numA !== numB) return numB - numA;
+        }
+        return 0;
+    });
 }
 
 async function getLatestSpigotVersion(minecraftVersion) {
@@ -54,7 +112,6 @@ async function getLatestSpigotVersion(minecraftVersion) {
         const response = await fetch(url);
         const data = await response.text();
         
-        // Find all versions matching this Minecraft version with any R version
         const versionRegex = new RegExp(`<version>(${minecraftVersion.replace(/\./g, '\\.')}-R(\\d+\\.\\d+)-SNAPSHOT)<\\/version>`, 'g');
         const matchingVersions = [];
         let match;
@@ -67,7 +124,6 @@ async function getLatestSpigotVersion(minecraftVersion) {
         }
         
         if (matchingVersions.length > 0) {
-            // Sort by R version and get the latest
             matchingVersions.sort((a, b) => {
                 const [aMajor, aMinor] = a.rVersion.split('.').map(Number);
                 const [bMajor, bMinor] = b.rVersion.split('.').map(Number);
@@ -77,16 +133,16 @@ async function getLatestSpigotVersion(minecraftVersion) {
             return matchingVersions[matchingVersions.length - 1].full;
         }
         
-        // Fallback to R0.1
         return `${minecraftVersion}-R0.1-SNAPSHOT`;
     } catch (error) {
-        console.error(`Failed to fetch latest R version for ${minecraftVersion}:`, error.message);
         return `${minecraftVersion}-R0.1-SNAPSHOT`;
     }
 }
 
 module.exports = {
     fetchMinecraftVersions,
+    fetchFabricGameVersions,
+    fetchForgeVersions,
     getLatestSpigotVersion,
     FALLBACK_VERSIONS
 };

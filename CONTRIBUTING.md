@@ -1,6 +1,6 @@
-# Contributing to Minecraft Plugin Development
+# Contributing to Minecraft Development
 
-We welcome contributions to the Minecraft Plugin Development extension! Whether it's a bug report, a new feature suggestion, or code improvements, please read the guidelines below.
+We welcome contributions to the Minecraft Development extension! Whether it's a bug report, a new feature suggestion, or code improvements, please read the guidelines below.
 
 ## Reporting Issues
 If you find a bug, please create an issue in the GitHub repository. Provide as much detail as possible, including:

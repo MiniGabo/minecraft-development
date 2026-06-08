@@ -1,42 +1,49 @@
-# 🎮 Minecraft Plugin Development
+# 🎮 Minecraft Development
 
-> Professional Minecraft plugin development made easy with an intuitive UI and modern project structure.
+> The essential extension for Minecraft development. Create and manage Plugins, Mods, and more with an intuitive UI and professional project structures.
 
-## ✨ Features
+## Features
 
-- 🎯 Modern UI for plugin creation with real-time validation
-- 📁 Professional project structure following best practices
-- 🔍 Smart Java files explorer with real-time updates
-- 🛠️ Interactive tools for creating commands and listeners
-- 🎮 Wide Minecraft version support (1.8.8 - 1.21.x)
-- ☕ Multiple Java versions (8, 11, 16, 17, 21)
-- 🔧 Maven integration with dependency management
-- 🎨 Smart color utilities (HEX support for MC 1.16+)
-- 📦 Ready-to-use package templates
-- ⚡ Automatic getter/setter generation
+### Multi-Platform Support
+- **Plugins**: Full support for Spigot and Paper API.
+- **Fabric**: Create modern mods with automatic `fabric.mod.json`, mixins, and entrypoint generation.
+- **Forge**: Support for both Legacy (1.8 - 1.12.2) and Modern (1.13+) Forge mods.
 
-## 📦 Installation
+### Professional Tools
+- **New Project Wizard**: A dynamic, reactive UI to scaffold projects in seconds.
+- **Content Generators**: 
+  - **Fabric**: Auto-generate and auto-register Items, Blocks, Entities, and Recipes.
+  - **Plugins**: Interactive tools for creating Commands, Listeners, and Config files.
+- **Smart Explorer**: Real-time project structure view with automatic file type detection (Main Class, Mixins, etc.).
+- **Metadata Management**: Easily define descriptions, licenses, authors, and more.
+- **Real-time Fetching**: Minecraft versions are fetched live from official APIs (Fabric Meta, Forge Maven, Spigot Nexus).
+- **Kotlin & Java**: Full parity for both languages across all platforms.
+- **Gradle & Maven**: Choose your preferred build system (Gradle Groovy/Kotlin DSL or Maven).
+
+## Installation
 
 1. Open VS Code, Cursor, Windsurf, Trae, etc.
 2. Go to Extensions (Ctrl+Shift+X).
-3. Search for "Minecraft Plugin Development" and click Install, or download the latest `.vsix` from the [Releases page](https://github.com/Gabodev/minecraft-plugin-development/releases).
+3. Search for **"Minecraft Development"** and click Install.
 
-## 🚀 Quick Start
+## Quick Start
 
-1. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS).
-2. Type "Create New Minecraft Plugin".
-3. Fill in your plugin details and select target versions.
-4. Click "Create Plugin".
+1. Press `Ctrl+Shift+P`.
+2. Type **"New Minecraft Project"**.
+3. Select your platform (Plugin, Fabric, or Forge).
+4. Fill in the dynamic form and click **"Create Project"**.
 
-Your plugin project will be created with the essential structure to start coding immediately.
+## Requirements
 
-## 🤝 Contributing
+- **Java JDK**: Appropriate version for your target Minecraft release (8, 11, 17, 21, etc.).
+
+## Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 Please check out our [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
-## 📝 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 

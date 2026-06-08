@@ -1,10 +1,10 @@
 {
   "name": "minecraft-plugin-development",
-  "displayName": "Minecraft Plugin Development",
-  "description": "Generate basic structure for Minecraft plugin projects",
-  "version": "1.1.0",
+  "displayName": "Minecraft Development",
+  "description": "The essential extension for Minecraft development. Create and manage Plugins, Mods, and more.",
+  "version": "1.2.0",
   "engines": {
-    "vscode": ">=1.118.1"
+    "vscode": ">=1.123.0"
   },
   "categories": [
     "Programming Languages",
@@ -19,13 +19,13 @@
     "commands": [
       {
         "command": "minecraft-plugin-development.createNewPlugin",
-        "title": "Create New Minecraft Plugin",
+        "title": "New Minecraft Project",
         "icon": "$(file-add)",
         "category": "Minecraft"
       },
       {
         "command": "minecraft-plugin-development.refreshPluginStructure",
-        "title": "Refresh",
+        "title": "Refresh Project Structure",
         "icon": "$(refresh)",
         "category": "Minecraft"
       },
@@ -37,7 +37,7 @@
       },
       {
         "command": "minecraft-plugin-development.addCommand",
-        "title": "Add Command to Plugin",
+        "title": "Add Command",
         "icon": "$(symbol-method)",
         "category": "Minecraft"
       },
@@ -54,6 +54,30 @@
         "category": "Minecraft"
       },
       {
+        "command": "minecraft-plugin-development.addFabricItem",
+        "title": "Add Fabric Item",
+        "icon": "$(symbol-variable)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addFabricBlock",
+        "title": "Add Fabric Block",
+        "icon": "$(layout-centered)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addFabricRecipe",
+        "title": "Add Fabric Recipe",
+        "icon": "$(Symbol-color)",
+        "category": "Minecraft"
+      },
+      {
+        "command": "minecraft-plugin-development.addFabricEntity",
+        "title": "Add Fabric Entity",
+        "icon": "$(github-action)",
+        "category": "Minecraft"
+      },
+      {
         "command": "minecraft-plugin-development.generateGettersSetters",
         "title": "Generate Getters/Setters",
         "icon": "$(symbol-property)",
@@ -61,7 +85,7 @@
       },
       {
         "command": "minecraft-plugin-development.searchJavaFiles",
-        "title": "Search Java Files",
+        "title": "Search Files",
         "icon": "$(search)",
         "category": "Minecraft"
       }
@@ -75,7 +99,7 @@
     "viewsWelcome": [
       {
         "view": "explorer",
-        "contents": "No folder opened.\n[Create New Minecraft Plugin](command:minecraft-plugin-development.createNewPlugin)",
+        "contents": "No Minecraft project opened.\n[Create New Project](command:minecraft-plugin-development.createNewPlugin)",
         "when": "workbenchState == empty"
       }
     ],
@@ -83,7 +107,7 @@
       "activitybar": [
         {
           "id": "minecraft-plugin-explorer",
-          "title": "Minecraft Plugin",
+          "title": "Minecraft",
           "icon": "images/spigot.svg"
         }
       ]
@@ -92,12 +116,12 @@
       "minecraft-plugin-explorer": [
         {
           "id": "minecraftPluginStructure",
-          "name": "Plugin Files",
+          "name": "Project Structure",
           "icon": "images/spigot.svg"
         },
         {
           "id": "minecraftPluginTools",
-          "name": "Plugin Tools",
+          "name": "Development Tools",
           "icon": "images/spigot.svg"
         }
       ]
@@ -133,19 +157,22 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "vscode-test",
-    "package": "vsce package",
-    "publish": "vsce publish"
+    "package": "pnpm exec vsce package",
+	"release": "pnpm exec vsce publish",
+	"release:ovsx": "dotenv -e .env -- pnpm exec ovsx publish -p $OVSX_PAT",
+	"release:all": "pnpm run release && pnpm run release:ovsx"
   },
   "devDependencies": {
+    "@secretlint/secretlint-rule-no-dotenv": "^13.0.2",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
     "@types/mocha": "^10.0.9",
     "@types/node": "20.x",
     "@types/vscode": "^1.78.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
-    "eslint": "^9.13.0"
-  },
-  "dependencies": {
+    "@vscode/vsce": "^3.9.2",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.13.0",
+    "ovsx": "^1.0.0"
   }
 }
