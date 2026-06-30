@@ -5,6 +5,27 @@ All notable changes to the "Minecraft Development" extension will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-11
+
+### Added
+- **Full Gradle Support**: Centralized Gradle wrapper templates (`gradlew`, `.jar`, `.properties`) for all platforms.
+- **Paper Integration**: Full support for PaperMC API fetching, including historical versions down to 1.7.10.
+- **Advanced Project Settings**: Added platform-specific configurations for Forge and Fabric during project creation.
+- **Template-Based Architecture**: Migrated from hardcoded code strings to an external file-based template system for better maintainability.
+- **Full Forge Tooling**: Added specialized tools for Forge items, blocks, recipes, and entities, including full asset generation (models, textures, lang).
+- **Universal Lombok Support**: Integrated Lombok support for both Forge and Fabric Java projects.
+- **Fabric Split Environment**: New advanced option to separate Client and Server/Common code and resources.
+
+### Improved
+- **Dynamic Gradle Versioning**: Automatic selection of optimal Gradle versions based on Minecraft version and platform (Forge, Fabric, Spigot/Paper).
+- **Intelligent Version Fetching**:
+  - Implemented a more robust version sorting algorithm that handles pre-releases (e.g., `1.13-pre7`) and sub-versions correctly.
+  - Optimized Spigot metadata fetching with internal caching to reduce network overhead.
+- **Paper Dependency Resolution**: Updated Maven/Gradle logic to use correct GroupIDs (`io.papermc.paper` or `com.destroystokyo.paper`) based on the selected Minecraft version.
+- **Kotlin Compatibility**: Enhanced Getter/Setter generator and other tools to properly recognize Kotlin files in all environments.
+- **Environment-Aware Commands**: Fabric tools now intelligently place assets in `src/client` while keeping logic/data in `src/main`.
+- **Webview UI Overhaul**: Fabric configuration fields are now fully editable text inputs.
+
 ## [1.2.0] - 2026-06-07
 
 ### Added
@@ -26,8 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Contextual UI**: Side bar tools now adapt to show only relevant commands for the current project type.
 - **Status Bar 2.0**: New intelligent status bar that detects and displays the current environment (Mod/Plugin) and project type.
 - **File Detection**: Enhanced Project Structure view with specific icons for Mixins, ModInitializers, and more.
-
----
 
 ## [1.1.0] - 2026-05-01
 

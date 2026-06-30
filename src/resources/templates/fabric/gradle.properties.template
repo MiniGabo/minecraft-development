@@ -1,0 +1,13 @@
+org.gradle.jvmargs=-Xmx1G
+org.gradle.parallel=true
+org.gradle.configuration-cache=false
+
+minecraft_version={{minecraft_version}}
+yarn_mappings={{yarn_mappings}}
+loader_version={{loader_version}}
+fabric_version={{fabric_version}}
+{{kotlinProperties}}
+
+mod_version = {{mod_version}}
+maven_group = {{maven_group}}
+archives_base_name = {{mod_id}}

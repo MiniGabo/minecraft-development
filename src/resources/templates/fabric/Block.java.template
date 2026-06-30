@@ -1,0 +1,9 @@
+package {{packageName}}.blocks;
+
+import net.minecraft.block.Block;
+
+public class {{className}} extends Block {
+    public {{className}}(Block.Settings settings) {
+        super(settings);
+    }
+}

@@ -1,0 +1,14 @@
+package {{packageName}}.{{subPackage}}
+
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.{{eventPackage}}.{{eventName}}Event
+
+class {{listenerName}}Listener : Listener {
+    
+    @EventHandler
+    fun on{{eventName}}(event: {{eventName}}Event) {
+        // Add your event handling logic here
+        
+    }
+}

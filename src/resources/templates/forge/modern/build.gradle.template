@@ -1,0 +1,56 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0, 6.2)'
+}
+
+version = '{{pluginVersion}}'
+group = '{{packageName}}'
+
+base {
+    archivesName = '{{projectNameLower}}'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of({{javaVersion}})
+
+minecraft {
+    mappings channel: '{{mappingsChannel}}', version: '{{mappingsVersion}}'
+    copyIdeResources = true
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'registe_events'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "{{modId}}" {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:{{minecraftVersion}}-{{forgeVersion}}'
+{{lombokDependency}}
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+        minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
+        forge_version: forge_version, forge_version_range: forge_version_range,
+        loader_version_range: loader_version_range,
+        mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
+        mod_authors: mod_authors, mod_description: mod_description,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}

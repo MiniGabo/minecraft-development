@@ -1,0 +1,14 @@
+package {{packageName}}.items
+
+import net.minecraft.item.Item
+import net.minecraft.item.ItemStack
+import net.minecraft.util.ActionResult
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.world.World
+import net.minecraft.util.Hand
+
+class {{className}}(properties: Properties) : Item(properties) {
+    override fun onItemRightClick(world: World, player: PlayerEntity, hand: Hand): ActionResult<ItemStack> {
+        return super.onItemRightClick(world, player, hand)
+    }
+}

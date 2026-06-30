@@ -1,0 +1,34 @@
+plugins {
+    java
+    {{kotlinPlugin}}
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
+group = "{{packageName}}"
+version = "{{pluginVersion}}"
+
+repositories {
+    mavenCentral()
+    maven("{{repoUrl}}")
+}
+
+dependencies {
+    compileOnly("{{depGroupId}}:{{depArtifactId}}:{{depVersion}}")
+    {{lombokDependency}}
+    {{kotlinStdlib}}
+}
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+    sourceCompatibility = "{{javaVersion}}"
+    targetCompatibility = "{{javaVersion}}"
+}
+
+tasks.processResources {
+    val props = mapOf("version" to version)
+    inputs.properties(props)
+    filteringCharset = "UTF-8"
+    filesMatching("plugin.yml") {
+        expand(props)
+    }
+}

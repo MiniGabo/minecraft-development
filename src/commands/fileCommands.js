@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const { findBasePackage } = require('../utils/packageUtils');
-const { getBasicConfigTemplate, getMessagesConfigTemplate, getCustomConfigTemplate } = require('../utils/templates');
+const { readTemplate, processTemplate } = require('../utils/templateUtils');
 
 async function addCommand(context) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -64,57 +64,12 @@ async function addCommand(context) {
     fs.mkdirSync(commandDir, { recursive: true });
     const commandFile = path.join(commandDir, `${commandName}Command.${ext}`);
 
-    let content = '';
-    if (isKotlin) {
-        content = `package ${basePackage.name}.${packageName}
-
-import org.bukkit.command.Command
-import org.bukkit.command.CommandExecutor
-import org.bukkit.command.CommandSender
-import org.bukkit.entity.Player
-
-class ${commandName}Command : CommandExecutor {
-    
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (sender !is Player) {
-            sender.sendMessage("This command can only be used by players")
-            return true
-        }
-
-        val player = sender
-
-        // Add your command logic here
-        
-
-        return true
-    }
-}`;
-    } else {
-        content = `package ${basePackage.name}.${packageName};
-
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
-public class ${commandName}Command implements CommandExecutor {
-    
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("This command can only be used by players");
-            return true;
-        }
-
-        Player player = (Player) sender;
-
-        // Add your command logic here
-        
-
-        return true;
-    }
-}`;
-    }
+    const template = await readTemplate(context, `spigot/Command.${ext}.template`);
+    const content = processTemplate(template, {
+        packageName: basePackage.name,
+        subPackage: packageName,
+        commandName: commandName
+    });
 
     fs.writeFileSync(commandFile, content);
     
@@ -216,38 +171,14 @@ async function addListener(context) {
     fs.mkdirSync(listenerDir, { recursive: true });
     const listenerFile = path.join(listenerDir, `${listenerName}Listener.${ext}`);
 
-    let content = '';
-    if (isKotlin) {
-        content = `package ${basePackage.name}.${packageName}
-
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
-import org.bukkit.event.${eventName.split(/(?=[A-Z])/)[0].toLowerCase()}.${eventName}Event
-
-class ${listenerName}Listener : Listener {
-    
-    @EventHandler
-    fun on${eventName}(event: ${eventName}Event) {
-        // Add your event handling logic here
-        
-    }
-}`;
-    } else {
-        content = `package ${basePackage.name}.${packageName};
-
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.${eventName.split(/(?=[A-Z])/)[0].toLowerCase()}.${eventName}Event;
-
-public class ${listenerName}Listener implements Listener {
-    
-    @Override
-    public void on${eventName}(${eventName}Event event) {
-        // Add your event handling logic here
-        
-    }
-}`;
-    }
+    const template = await readTemplate(context, `spigot/Listener.${ext}.template`);
+    const content = processTemplate(template, {
+        packageName: basePackage.name,
+        subPackage: packageName,
+        listenerName: listenerName,
+        eventPackage: eventName.split(/(?=[A-Z])/)[0].toLowerCase(),
+        eventName: eventName
+    });
 
     fs.writeFileSync(listenerFile, content);
     
@@ -280,17 +211,17 @@ async function addConfig(context) {
         'src', 'main', 'resources'
     );
 
-    let template = '';
+    let templateName = '';
     let fileName = '';
 
     switch (configType) {
         case 'Basic Configuration':
             fileName = 'config.yml';
-            template = getBasicConfigTemplate();
+            templateName = 'spigot/config/config.yml.template';
             break;
         case 'Messages Configuration':
             fileName = 'messages.yml';
-            template = getMessagesConfigTemplate();
+            templateName = 'spigot/config/messages.yml.template';
             break;
         case 'Custom Configuration':
             const customFileName = await vscode.window.showInputBox({
@@ -306,13 +237,16 @@ async function addConfig(context) {
             });
             if (!customFileName) return;
             fileName = customFileName;
-            template = getCustomConfigTemplate();
+            templateName = 'spigot/config/custom.yml.template';
             break;
     }
 
+    const template = await readTemplate(context, templateName);
+    const content = processTemplate(template, {});
+
     fs.mkdirSync(resourcesPath, { recursive: true });
     const filePath = path.join(resourcesPath, fileName);
-    fs.writeFileSync(filePath, template);
+    fs.writeFileSync(filePath, content);
     
     const doc = await vscode.workspace.openTextDocument(filePath);
     await vscode.window.showTextDocument(doc);

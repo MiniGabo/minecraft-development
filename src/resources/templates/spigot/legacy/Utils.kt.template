@@ -1,0 +1,10 @@
+package {{packageName}}.utils
+
+import org.bukkit.ChatColor
+
+object Utils {
+    
+    fun colorize(msg: String): String {
+        return ChatColor.translateAlternateColorCodes('&', msg)
+    }
+}

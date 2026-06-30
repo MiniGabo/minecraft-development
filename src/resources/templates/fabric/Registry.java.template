@@ -1,0 +1,12 @@
+package {{packageName}};
+
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
+
+public class {{projectName}}Registry {
+    
+    public static void registerAll() {
+        // Registration logic will be added here
+    }
+}

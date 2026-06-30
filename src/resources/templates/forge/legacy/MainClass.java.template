@@ -1,0 +1,12 @@
+package {{packageName}};
+
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+
+@Mod(modid = "{{modId}}", name = "{{projectName}}", version = "{{pluginVersion}}")
+public class {{projectName}} {
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        System.out.println("Hello from Legacy Forge!");
+    }
+}

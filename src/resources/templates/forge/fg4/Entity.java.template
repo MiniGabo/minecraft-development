@@ -1,0 +1,11 @@
+package {{packageName}}.entities;
+
+import net.minecraft.entity.CreatureEntity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.world.World;
+
+public class {{className}} extends CreatureEntity {
+    public {{className}}(EntityType<? extends CreatureEntity> type, World world) {
+        super(type, world);
+    }
+}

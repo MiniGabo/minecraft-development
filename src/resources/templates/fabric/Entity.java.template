@@ -1,0 +1,11 @@
+package {{packageName}}.entities;
+
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.mob.PathAwareEntity;
+import net.minecraft.world.World;
+
+public class {{className}} extends PathAwareEntity {
+    public {{className}}(EntityType<? extends PathAwareEntity> type, World world) {
+        super(type, world);
+    }
+}

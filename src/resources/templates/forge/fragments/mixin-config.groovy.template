@@ -1,0 +1,3 @@
+	mixin {
+		add sourceSets.main, "{{modId}}.refmap.json"
+	}

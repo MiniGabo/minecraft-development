@@ -1,0 +1,6 @@
+package {{packageName}}.blocks
+
+import net.minecraft.block.AbstractBlock
+import net.minecraft.block.Block
+
+class {{className}}(properties: AbstractBlock.Properties) : Block(properties)

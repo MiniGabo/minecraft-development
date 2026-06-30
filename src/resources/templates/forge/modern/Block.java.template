@@ -1,0 +1,10 @@
+package {{packageName}}.blocks;
+
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+
+public class {{className}} extends Block {
+    public {{className}}(BlockBehaviour.Properties properties) {
+        super(properties);
+    }
+}

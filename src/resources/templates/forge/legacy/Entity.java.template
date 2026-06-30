@@ -1,0 +1,10 @@
+package {{packageName}}.entities;
+
+import net.minecraft.entity.EntityCreature;
+import net.minecraft.world.World;
+
+public class {{className}} extends EntityCreature {
+    public {{className}}(World worldIn) {
+        super(worldIn);
+    }
+}

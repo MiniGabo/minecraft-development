@@ -1,0 +1,12 @@
+package {{packageName}}
+
+import net.minecraftforge.fml.common.Mod
+import net.minecraftforge.fml.common.event.FMLInitializationEvent
+
+@Mod(modid = "{{modId}}", name = "{{projectName}}", version = "{{pluginVersion}}")
+class {{projectName}} {
+    @Mod.EventHandler
+    fun init(event: FMLInitializationEvent) {
+        println("Hello from Legacy Forge (Kotlin)!")
+    }
+}

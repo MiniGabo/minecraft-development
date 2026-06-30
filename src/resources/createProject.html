@@ -338,6 +338,7 @@
                             <select id="javaVersion">
                                 <option value="21">Java 21</option>
                                 <option value="17">Java 17</option>
+                                <option value="16">Java 16</option>
                                 <option value="11">Java 11</option>
                                 <option value="8">Java 8</option>
                             </select>
@@ -418,19 +419,55 @@
             </div>
 
             <div id="fabricConfig" class="hidden">
-                <div class="form-group">
-                    <label>Fabric API Version:</label>
-                    <div class="input-group">
-                        <span class="input-icon">🛠️</span>
-                        <div class="input-with-icon">
-                            <input type="text" id="fabricApiVersion" value="latest" placeholder="latest">
-                        </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Loom Version:</label>
+                        <input type="text" id="loomVersion" value="1.16-SNAPSHOT">
                     </div>
-                    <small>Leave as 'latest' for recommended version</small>
+                    <div class="form-group">
+                        <label>Loader Version:</label>
+                        <input type="text" id="loaderVersion" value="0.19.3">
+                    </div>
                 </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Yarn Mappings:</label>
+                        <input type="text" id="yarnMappings" placeholder="e.g. 1.21+build.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Fabric API Version:</label>
+                        <input type="text" id="fabricApiVersion" value="0.141.4+1.21.11">
+                    </div>
+                </div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="fabricUseMixins" checked>
+                    <span>Include Mixin support</span>
+                </label>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="fabricSplitEnv">
+                    <span>Split Client/Server Environment</span>
+                </label>
             </div>
 
             <div id="forgeConfig" class="hidden">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Forge Version:</label>
+                        <input type="text" id="forgeVersion" placeholder="e.g. 47.2.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Mappings Channel:</label>
+                        <input type="text" id="forgeMappingsChannel" value="official">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Mappings Version:</label>
+                        <input type="text" id="forgeMappingsVersion" placeholder="e.g. 1.20.1">
+                    </div>
+                    <div class="form-group">
+                    </div>
+                </div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>License:</label>
@@ -451,6 +488,10 @@
                         </div>
                     </div>
                 </div>
+                <label class="checkbox-group">
+                    <input type="checkbox" id="forgeUseMixins" checked>
+                    <span>Include Mixin support</span>
+                </label>
             </div>
         </div>
 
@@ -478,8 +519,10 @@
 
         let versionData = {
             spigot: [],
+            paper: [],
             fabric: [],
-            forge: []
+            forge: [],
+            fabricApi: []
         };
 
         // Notify extension that we are ready
@@ -489,20 +532,37 @@
             const message = event.data;
             if (message.command === 'setVersions') {
                 versionData.spigot = message.spigot;
+                versionData.paper = message.paper;
                 versionData.fabric = message.fabric;
                 versionData.forge = message.forge;
+                versionData.fabricApi = message.fabricApi || [];
+                
                 updateVersionList();
                 loadingOverlay.classList.add('hidden');
+            } else if (message.command === 'setFabricDefaults') {
+                document.getElementById('loomVersion').value = message.loom;
+                document.getElementById('loaderVersion').value = message.loader;
+                document.getElementById('yarnMappings').value = message.yarn;
+                document.getElementById('fabricApiVersion').value = message.fabric;
+            } else if (message.command === 'setForgeDefaults') {
+                document.getElementById('forgeVersion').value = message.forge;
+                document.getElementById('forgeMappingsChannel').value = message.mappingsChannel;
+                document.getElementById('forgeMappingsVersion').value = message.mappingsVersion;
+                if (message.javaVersion) {
+                    document.getElementById('javaVersion').value = message.javaVersion;
+                }
             }
         });
 
         function updateVersionList() {
             const type = projectType.value;
+            const apiType = document.getElementById('apiType').value;
             minecraftVersionSelect.innerHTML = '';
             
             let filteredVersions = [];
             if (type === 'fabric') filteredVersions = versionData.fabric;
             else if (type === 'forge') filteredVersions = versionData.forge;
+            else if (type === 'plugin' && apiType === 'paper') filteredVersions = versionData.paper;
             else filteredVersions = versionData.spigot;
 
             if (filteredVersions.length === 0) filteredVersions = versionData.spigot;
@@ -513,7 +573,72 @@
                 option.text = v;
                 minecraftVersionSelect.appendChild(option);
             });
+
+            // Trigger update of fabric/forge specific fields
+            updatePlatformDefaults();
         }
+
+        function updatePlatformDefaults() {
+            const mcVersion = minecraftVersionSelect.value;
+            const type = projectType.value;
+            
+            if (type === 'forge') {
+                updateForgeDefaults(mcVersion);
+            } else if (type === 'fabric') {
+                updateFabricDefaults(mcVersion);
+            }
+        }
+
+		function _forgeEraFromVersion(mcVersion) {
+			if (!mcVersion) return 'fg6';
+			const parts = mcVersion.split('.').map(Number);
+			const major = parts[0], minor = parts[1] || 0;
+			if (major === 1 && minor <= 12) return 'legacy';
+			if (major === 1 && minor <= 16) return 'fg4';
+			if (major === 1 && minor <= 18) return 'fg5';
+			return 'fg6';
+		}
+
+		function updateForgeDefaults(version) {
+			const era = _forgeEraFromVersion(version);
+			const kotlinDslOption = [...buildSystem.options].find(opt => opt.value === 'gradle-kotlin');
+			if (era === 'legacy' || era === 'fg4' || era === 'fg5') {
+				if (kotlinDslOption) kotlinDslOption.disabled = true;
+				if (buildSystem.value === 'gradle-kotlin') buildSystem.value = 'gradle';
+			} else if (kotlinDslOption) {
+				kotlinDslOption.disabled = false;
+			}
+
+			vscode.postMessage({ 
+				command: 'getRecommendedVersions', 
+				platform: 'forge', 
+				minecraftVersion: version 
+			});
+		}
+
+        function updateFabricDefaults(version) {
+            // Re-enable Gradle Kotlin for Fabric if it was disabled by Forge
+            const kotlinDslOption = [...buildSystem.options].find(opt => opt.value === 'gradle-kotlin');
+            if (kotlinDslOption) {
+                kotlinDslOption.disabled = false;
+            }
+            // Request recommended versions from extension
+            vscode.postMessage({ 
+                command: 'getRecommendedVersions', 
+                platform: 'fabric', 
+                minecraftVersion: version 
+            });
+        }
+
+        minecraftVersionSelect.addEventListener('change', () => {
+            updatePlatformDefaults();
+        });
+
+        document.getElementById('apiType').addEventListener('change', () => {
+            if (projectType.value === 'plugin') {
+                updateVersionList();
+            }
+        });
 
         projectType.addEventListener('change', () => {
             const type = projectType.value;
@@ -567,8 +692,9 @@
                 }
             }
 
+            const type = projectType.value;
             const data = {
-                projectType: projectType.value,
+                projectType: type,
                 projectName: document.getElementById('projectName').value,
                 packageName: document.getElementById('packageName').value,
                 pluginVersion: document.getElementById('pluginVersion').value,
@@ -587,7 +713,15 @@
                 softDependencies: document.getElementById('softDependencies').value,
                 // Fabric specific
                 fabricApiVersion: document.getElementById('fabricApiVersion').value,
+                loaderVersion: document.getElementById('loaderVersion').value,
+                loomVersion: document.getElementById('loomVersion').value,
+                yarnMappings: document.getElementById('yarnMappings').value,
+                splitEnvironment: document.getElementById('fabricSplitEnv').checked,
+                useMixins: type === 'fabric' ? document.getElementById('fabricUseMixins').checked : document.getElementById('forgeUseMixins').checked,
                 // Forge specific
+                forgeVersion: document.getElementById('forgeVersion').value,
+                mappingsChannel: document.getElementById('forgeMappingsChannel').value,
+                mappingsVersion: document.getElementById('forgeMappingsVersion').value,
                 forgeLicense: document.getElementById('forgeLicense').value,
                 forgeCredits: document.getElementById('forgeCredits').value
             };

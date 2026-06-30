@@ -1,0 +1,13 @@
+# Messages Configuration
+prefix: '&8[&bPlugin&8] &7'
+
+messages:
+    welcome: '&aWelcome to the server!'
+    goodbye: '&cGoodbye!'
+    error: '&cAn error has occurred!'
+
+commands:
+    no-permission: '&cYou don''t have permission to use this command!'
+    player-only: '&cThis command can only be used by players!'
+    invalid-args: '&cInvalid arguments! Usage: %usage%'
+    cooldown: '&cPlease wait %time% seconds before using this command again!'

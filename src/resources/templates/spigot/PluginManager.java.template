@@ -1,0 +1,15 @@
+package {{packageName}}.managers;
+
+{{lombokImport}}
+
+public class PluginManager {
+    {{instanceField}}
+    
+    private PluginManager() {}
+    
+    {{instanceMethod}}
+
+    public void initialize() {
+        // Initialize your managers here
+    }
+}

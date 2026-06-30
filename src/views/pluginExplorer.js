@@ -290,6 +290,8 @@ class ProjectToolsProvider {
         }
 
         const isFabric = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'fabric.mod.json'));
+        const isForge = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'META-INF', 'mods.toml')) || 
+                        fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'mcmod.info'));
         const isSpigot = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'plugin.yml')) || 
                          fs.existsSync(path.join(workspaceRoot, 'pom.xml'));
         
@@ -301,6 +303,13 @@ class ProjectToolsProvider {
                 new ToolTreeItem('Add Fabric Block', 'minecraft-plugin-development.addFabricBlock', 'layout-centered', 'Create a new Fabric block with states, models and lang'),
                 new ToolTreeItem('Add Fabric Recipe', 'minecraft-plugin-development.addFabricRecipe', 'symbol-color', 'Create a new JSON recipe'),
                 new ToolTreeItem('Add Fabric Entity', 'minecraft-plugin-development.addFabricEntity', 'github-action', 'Create and register a new Fabric entity')
+            );
+        } else if (isForge) {
+            items.push(
+                new ToolTreeItem('Add Forge Item', 'minecraft-plugin-development.addForgeItem', 'symbol-variable', 'Create a new Forge item with models and lang'),
+                new ToolTreeItem('Add Forge Block', 'minecraft-plugin-development.addForgeBlock', 'layout-centered', 'Create a new Forge block with states, models and lang'),
+                new ToolTreeItem('Add Forge Recipe', 'minecraft-plugin-development.addForgeRecipe', 'symbol-color', 'Create a new JSON recipe'),
+                new ToolTreeItem('Add Forge Entity', 'minecraft-plugin-development.addForgeEntity', 'github-action', 'Create and register a new Forge entity')
             );
         } else if (isSpigot) {
             items.push(

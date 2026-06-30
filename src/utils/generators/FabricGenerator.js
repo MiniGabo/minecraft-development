@@ -1,254 +1,163 @@
 const vscode = require('vscode');
 const BaseGenerator = require('./BaseGenerator');
+const { getFabricVersionData } = require('../fabricUtils');
+const { getRecommendedGradleVersion } = require('../minecraftUtils');
 
 class FabricGenerator extends BaseGenerator {
-    constructor(data) {
-        super(data);
+    constructor(data, context) {
+        super(data, context);
         this.isKotlin = data.language === 'kotlin';
+        this.useMixins = data.useMixins !== false; // Default to true if not specified
     }
 
     async generate(projectDirUri, basePackagePathUri) {
-        // Create fabric.mod.json
-        await this._createFabricModJson(projectDirUri);
-        
-        // Create build files
-        await this._createBuildGradle(projectDirUri);
-        await this._createGradleProperties(projectDirUri);
-        await this._createSettingsGradle(projectDirUri);
-
-        // Create main class
-        await this._createMainClass(basePackagePathUri);
-        
-        // Create mixin (optional but common)
-        await this._createMixin(basePackagePathUri);
-    }
-
-    async _createFabricModJson(projectDirUri) {
         const modId = this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const content = {
-            "schemaVersion": 1,
-            "id": modId,
-            "version": "${version}",
-            "name": this.data.projectName,
-            "description": this.data.description,
-            "authors": [this.data.authorName],
-            "contact": {
-                "homepage": this.data.website,
-                "sources": this.data.website
-            },
-            "license": "MIT",
-            "icon": "assets/" + modId + "/icon.png",
-            "environment": "*",
-            "entrypoints": {
-                "main": [
-                    this.data.packageName + "." + this.data.projectName
-                ]
-            },
-            "mixins": [
-                modId + ".mixins.json"
-            ],
-            "depends": {
-                "fabricloader": ">=0.15.0",
-                "minecraft": "~" + this.data.minecraftVersion,
-                "java": ">=" + this.data.javaVersion
-            }
+        const isKotlinDSL = this.data.buildSystem === 'gradle-kotlin';
+        const buildExt = isKotlinDSL ? 'kts' : 'groovy';
+        
+        const versionData = getFabricVersionData(this.data.minecraftVersion);
+        const gradleVersion = getRecommendedGradleVersion('fabric', this.data.minecraftVersion);
+        const isModern = require('../fabricUtils').isModern(this.data.minecraftVersion);
+
+        const kotlinVersion = isModern ? '2.0.21' : '1.9.22';
+        const fklVersion = isModern ? '1.12.3+kotlin.2.0.21' : '1.10.18+kotlin.1.9.22';
+
+        const variables = {
+            projectName: this.data.projectName,
+            projectNameLower: this.data.projectName.toLowerCase(),
+            packageName: this.data.packageName,
+            pluginVersion: this.data.pluginVersion,
+            authorName: this.data.authorName,
+            description: this.data.description,
+            website: this.data.website,
+            minecraftVersion: this.data.minecraftVersion,
+            javaVersion: this.data.javaVersion,
+            modId: modId,
+            gradle_version: gradleVersion,
+            kotlin_version: kotlinVersion,
+            fkl_version: fklVersion,
+            
+            // Version data for properties
+            minecraft_version: this.data.minecraftVersion,
+            yarn_mappings: this.data.yarnMappings || versionData.yarn_mappings,
+            loader_version: this.data.loaderVersion || versionData.loader_version,
+            fabric_version: (this.data.fabricApiVersion && this.data.fabricApiVersion !== 'latest') ? this.data.fabricApiVersion : versionData.fabric_version,
+            loom_version: this.data.loomVersion || versionData.loom_version,
+            mod_version: this.data.pluginVersion,
+            maven_group: this.data.packageName,
+            mod_id: modId
         };
 
+        // Pre-process fragments that might contain their own placeholders
+        variables.kotlinPlugin = this.isKotlin ? this.processTemplate(await this.readTemplate(`fabric/fragments/gradle-kotlin-plugin.${buildExt}.template`), variables) : "";
+        variables.kotlinDependency = this.isKotlin ? this.processTemplate(await this.readTemplate(`fabric/fragments/gradle-kotlin-dependency.${buildExt}.template`), variables) : '';
+        variables.lombokDependency = (this.data.useLombok && !this.isKotlin) ? this.processTemplate(await this.readTemplate(`fabric/fragments/gradle-lombok.${buildExt}.template`), variables) : '';
+        variables.kotlinProperties = this.isKotlin ? `kotlin_version=${kotlinVersion}` : "";
+        
+        variables.splitEnvironment = this.data.splitEnvironment ? this.processTemplate(await this.readTemplate(`fabric/fragments/gradle-split-env.${buildExt}.template`), variables) : "";
+        
+        const mixinExample = await this.readTemplate('fabric/fragments/mixin-example.json.template');
+        variables.clientEntrypoint = this.data.splitEnvironment ? this.processTemplate(await this.readTemplate('fabric/fragments/client-entrypoint.json.template'), variables) : "";
+        variables.clientMixinsConfig = (this.data.splitEnvironment && this.useMixins) ? this.processTemplate(await this.readTemplate('fabric/fragments/client-mixins-config.json.template'), variables) : "";
+        variables.commonMixins = this.data.splitEnvironment ? "" : mixinExample;
+        variables.clientMixins = this.data.splitEnvironment ? mixinExample : "";
+
+        // Handle Split Environment directories and files
+        if (this.data.splitEnvironment) {
+            const sourcePath = this.isKotlin ? 'kotlin' : 'java';
+            const clientSourceDirUri = vscode.Uri.joinPath(projectDirUri, 'src', 'client', sourcePath, ...this.data.packageName.split('.'), 'client');
+            await vscode.workspace.fs.createDirectory(clientSourceDirUri);
+            
+            const clientResDirUri = vscode.Uri.joinPath(projectDirUri, 'src', 'client', 'resources');
+            await vscode.workspace.fs.createDirectory(clientResDirUri);
+
+            // Create Client Main Class
+            const ext = this.isKotlin ? 'kt' : 'java';
+            const clientMainTemplate = await this.readTemplate(`fabric/ClientMainClass.${ext}.template`);
+            await this.writeFile(
+                vscode.Uri.joinPath(clientSourceDirUri, `${this.data.projectName}Client.${ext}`),
+                this.processTemplate(clientMainTemplate, variables)
+            );
+
+            // Create Client Mixins (if enabled)
+            if (this.useMixins) {
+                const clientMixinsTemplate = await this.readTemplate('fabric/client.mixins.json.template');
+                await this.writeFile(
+                    vscode.Uri.joinPath(clientResDirUri, `${modId}.client.mixins.json`),
+                    this.processTemplate(clientMixinsTemplate, variables)
+                );
+                
+                // Create client mixin package and ExampleMixin
+                const clientMixinDirUri = vscode.Uri.joinPath(projectDirUri, 'src', 'client', sourcePath, ...this.data.packageName.split('.'), 'client', 'mixin');
+                await vscode.workspace.fs.createDirectory(clientMixinDirUri);
+                
+                const mixinTemplate = await this.readTemplate(`fabric/ExampleMixin.${ext}.template`);
+                // Adjust package name for client mixin
+                const clientMixinVariables = { ...variables, packageName: `${this.data.packageName}.client` };
+                await this.writeFile(
+                    vscode.Uri.joinPath(clientMixinDirUri, `ExampleMixin.${ext}`),
+                    this.processTemplate(mixinTemplate, clientMixinVariables)
+                );
+            }
+        }
+
+        // Create fabric.mod.json
+        const fabricModJson = await this.readTemplate('fabric/fabric.mod.json.template');
         await this.writeFile(
             vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'fabric.mod.json'),
-            JSON.stringify(content, null, 4)
+            this.processTemplate(fabricModJson, variables)
         );
 
-        // Create mixins.json
-        const mixinContent = {
-            "required": true,
-            "package": this.data.packageName + ".mixin",
-            "compatibilityLevel": "JAVA_" + this.data.javaVersion,
-            "mixins": [
-                "ExampleMixin"
-            ],
-            "injectors": {
-                "defaultRequire": 1
+        // Create mixins.json (Optional)
+        if (this.useMixins) {
+            const mixinsJson = await this.readTemplate('fabric/mixins.json.template');
+            await this.writeFile(
+                vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', modId + '.mixins.json'),
+                this.processTemplate(mixinsJson, variables)
+            );
+            
+            // Only create ExampleMixin in main if not split environment
+            if (!this.data.splitEnvironment) {
+                const ext = this.isKotlin ? 'kt' : 'java';
+                const mixinTemplate = await this.readTemplate(`fabric/ExampleMixin.${ext}.template`);
+                await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(basePackagePathUri, 'mixin'));
+                await this.writeFile(
+                    vscode.Uri.joinPath(basePackagePathUri, 'mixin', `ExampleMixin.${ext}`),
+                    this.processTemplate(mixinTemplate, variables)
+                );
             }
-        };
+        }
+        
+        // Create build files
+        const buildTemplateName = isKotlinDSL ? 'build.gradle.kts.template' : 'build.gradle.template';
+        const buildGradle = await this.readTemplate('fabric/' + buildTemplateName);
+        const buildFileName = isKotlinDSL ? 'build.gradle.kts' : 'build.gradle';
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, buildFileName), this.processTemplate(buildGradle, variables));
+        
+        await this._createGradleProperties(projectDirUri, variables);
+        await this._createSettingsGradle(projectDirUri, variables);
+        await this.copyGradleWrapper(projectDirUri, variables);
 
+        // Create main class
+        const ext = this.isKotlin ? 'kt' : 'java';
+        const mainClassTemplate = await this.readTemplate(`fabric/MainClass.${ext}.template`);
         await this.writeFile(
-            vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', modId + '.mixins.json'),
-            JSON.stringify(mixinContent, null, 4)
+            vscode.Uri.joinPath(basePackagePathUri, `${this.data.projectName}.${ext}`),
+            this.processTemplate(mainClassTemplate, variables)
         );
     }
 
-    async _createBuildGradle(projectDirUri) {
-        const content = `plugins {
-    id 'fabric-loom' version '1.7-SNAPSHOT'
-    id 'maven-publish'
-    ${this.isKotlin ? "id 'org.jetbrains.kotlin.jvm' version '1.9.22'" : ''}
-}
-
-version = project.mod_version
-group = project.maven_group
-
-base {
-    archivesName = project.archives_base_name
-}
-
-repositories {
-    // Add repositories here
-}
-
-dependencies {
-    minecraft "com.mojang:minecraft:\${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:\${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:\${project.loader_version}"
-
-    // Fabric API
-    modImplementation "net.fabricmc.fabric-api:fabric-api:\${project.fabric_version}"
-    
-    ${this.isKotlin ? 'modImplementation "net.fabricmc:fabric-language-kotlin:1.10.19+kotlin.1.9.22"' : ''}
-}
-
-processResources {
-    inputs.property "version", project.version
-    inputs.property "minecraft_version", project.minecraft_version
-    inputs.property "loader_version", project.loader_version
-
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version,
-                "minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = ${this.data.javaVersion}
-}
-
-java {
-    withSourcesJar()
-
-    sourceCompatibility = JavaVersion.VERSION_${this.data.javaVersion}
-    targetCompatibility = JavaVersion.VERSION_${this.data.javaVersion}
-}
-
-jar {
-    from("LICENSE") {
-        rename { "\${it}_\${project.base.archivesName.get()}"}
-    }
-}
-`;
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'build.gradle'), content);
+    async _createGradleProperties(projectDirUri, variables) {
+        const template = await this.readTemplate('fabric/gradle.properties.template');
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'gradle.properties'), this.processTemplate(template, variables));
     }
 
-    async _createGradleProperties(projectDirUri) {
-        const content = `org.gradle.jvmargs=-Xmx2G
-org.gradle.parallel=true
-
-# Mod properties
-mod_version = ${this.data.pluginVersion}
-maven_group = ${this.data.packageName}
-archives_base_name = ${this.data.projectName.toLowerCase()}
-
-# Dependencies
-minecraft_version = ${this.data.minecraftVersion}
-yarn_mappings = ${this.data.minecraftVersion}+build.1
-loader_version = 0.15.11
-
-# Fabric API version
-fabric_version = 0.92.0+1.20.1
-`;
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'gradle.properties'), content);
-    }
-
-    async _createSettingsGradle(projectDirUri) {
-        const content = `pluginManagement {
-    repositories {
-        maven { url "https://maven.fabricmc.net/" }
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-
-rootProject.name = '${this.data.projectName}'
-`;
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'settings.gradle'), content);
-    }
-
-    async _createMainClass(basePathUri) {
-        const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
-
-        if (this.isKotlin) {
-            content = `package ${this.data.packageName}
-
-import net.fabricmc.api.ModInitializer
-import org.slf4j.LoggerFactory
-
-object ${this.data.projectName} : ModInitializer {
-    private val logger = LoggerFactory.getLogger("${this.data.projectName.toLowerCase()}")
-
-	override fun onInitialize() {
-		logger.info("Hello Fabric world from ${this.data.projectName}!")
-	}
-}`;
-        } else {
-            content = `package ${this.data.packageName};
-
-import net.fabricmc.api.ModInitializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class ${this.data.projectName} implements ModInitializer {
-	public static final Logger LOGGER = LoggerFactory.getLogger("${this.data.projectName.toLowerCase()}");
-
-	@Override
-	public void onInitialize() {
-		LOGGER.info("Hello Fabric world from ${this.data.projectName}!");
-	}
-}`;
-        }
-
-        await this.writeFile(vscode.Uri.joinPath(basePathUri, `${this.data.projectName}.${ext}`), content);
-    }
-
-    async _createMixin(basePathUri) {
-        const ext = this.isKotlin ? 'kt' : 'java';
-        const mixinPath = vscode.Uri.joinPath(basePathUri, 'mixin', `ExampleMixin.${ext}`);
-        
-        let content = '';
-        if (this.isKotlin) {
-            content = `package ${this.data.packageName}.mixin
-
-import net.minecraft.client.gui.screen.TitleScreen
-import org.spongepowered.asm.mixin.Mixin
-import org.spongepowered.asm.mixin.injection.At
-import org.spongepowered.asm.mixin.injection.Inject
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
-
-@Mixin(TitleScreen::class)
-class ExampleMixin {
-	@Inject(at = [At("HEAD")], method = ["init()V"])
-	private fun init(info: CallbackInfo) {
-		println("This line is printed by an example mod mixin!")
-	}
-}`;
-        } else {
-            content = `package ${this.data.packageName}.mixin;
-
-import net.minecraft.client.gui.screen.TitleScreen;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-@Mixin(TitleScreen.class)
-public class ExampleMixin {
-	@Inject(at = @At("HEAD"), method = "init()V")
-	private void init(CallbackInfo info) {
-		System.out.println("This line is printed by an example mod mixin!");
-	}
-}`;
-        }
-        await this.writeFile(mixinPath, content);
+    async _createSettingsGradle(projectDirUri, variables) {
+        const isKotlinDSL = this.data.buildSystem === 'gradle-kotlin';
+        const templateName = isKotlinDSL ? 'settings.gradle.kts.template' : 'settings.gradle.template';
+        const template = await this.readTemplate('fabric/' + templateName);
+        const settingsFileName = isKotlinDSL ? 'settings.gradle.kts' : 'settings.gradle';
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, settingsFileName), this.processTemplate(template, variables));
     }
 }
 

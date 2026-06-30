@@ -1,0 +1,7 @@
+package {{packageName}}.blocks
+
+import net.minecraft.block.Block
+import net.minecraft.block.AbstractBlock
+
+class {{className}}(settings: AbstractBlock.Settings) : Block(settings) {
+}

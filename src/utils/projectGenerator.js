@@ -6,16 +6,17 @@ class ProjectGeneratorFactory {
     /**
      * Creates the appropriate generator based on project data
      * @param {Object} data 
+     * @param {vscode.ExtensionContext} context
      * @returns {BaseGenerator}
      */
-    static createGenerator(data) {
+    static createGenerator(data, context) {
         switch (data.projectType) {
             case 'fabric':
-                return new FabricGenerator(data);
+                return new FabricGenerator(data, context);
             case 'forge':
-                return new ForgeGenerator(data);
+                return new ForgeGenerator(data, context);
             default:
-                return new SpigotGenerator(data);
+                return new SpigotGenerator(data, context);
         }
     }
 }

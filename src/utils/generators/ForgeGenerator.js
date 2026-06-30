@@ -1,238 +1,170 @@
 const vscode = require('vscode');
 const BaseGenerator = require('./BaseGenerator');
+const { getForgeVersionData, getForgeVersionRanges } = require('../forgeUtils');
+const {
+    getRecommendedGradleVersion,
+    usesEventBus7,
+    usesNewItemUseSignature,
+    getForgeEra,
+    getForgeGradlePluginVersion,
+    usesPre17Names,
+    getRecommendedJavaVersion,
+    getPackFormat
+} = require('../minecraftUtils');
+
+const TEMPLATE_DIR_BY_ERA = {
+    legacy: 'forge/legacy',
+    fg4: 'forge/fg4',
+    fg5: 'forge/fg5',
+    fg6: 'forge/modern',
+    'fg6-eventbus7': 'forge/modern'
+};
 
 class ForgeGenerator extends BaseGenerator {
-    constructor(data) {
-        super(data);
+    constructor(data, context) {
+        super(data, context);
         this.isKotlin = data.language === 'kotlin';
-        this.isLegacy = this._isLegacyVersion(data.minecraftVersion);
-    }
-
-    _isLegacyVersion(version) {
-        if (!version) return false;
-        const minor = parseInt(version.split('.')[1]);
-        return minor <= 12; // 1.12.2 and below is considered "legacy" Forge
+        this.era = getForgeEra(data.minecraftVersion);
+        this.isLegacy = this.era === 'legacy';
+        this.useMixins = data.useMixins !== false;
     }
 
     async generate(projectDirUri, basePackagePathUri) {
-        // Create mods.toml (Modern) or mcmod.info (Legacy)
+        const modId = this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const forgeInfo = getForgeVersionData(this.data.minecraftVersion);
+        const useLombok = this.data.useLombok && !this.isKotlin;
+        const gradleVersion = getRecommendedGradleVersion('forge', this.data.minecraftVersion);
+
+        const forgeVersion = this.data.forgeVersion || forgeInfo.forge;
+        const ranges = getForgeVersionRanges(this.data.minecraftVersion, forgeVersion);
+        const isKotlinDSL = this.data.buildSystem === 'gradle-kotlin';
+        const ext = this.isKotlin ? 'kt' : 'java';
+
+        let mixinBuildscript = "";
+        let mixinPlugin = "";
+        let mixinConfig = "";
+        let mixinDependency = "";
+		let mixinManifestAttributes = "";
+
+		if (this.useMixins && this.isLegacy) {
+			const buildExt = isKotlinDSL ? 'kotlin' : 'groovy';
+			const tempVars = { modId: modId };
+			mixinBuildscript = this.processTemplate(await this.readTemplate(`forge/fragments/mixin-buildscript.${buildExt}.template`), tempVars);
+			mixinPlugin = this.processTemplate(await this.readTemplate(`forge/fragments/mixin-plugin.${buildExt}.template`), tempVars);
+			mixinConfig = this.processTemplate(await this.readTemplate(`forge/fragments/mixin-config.${buildExt}.template`), tempVars);
+			mixinDependency = this.processTemplate(await this.readTemplate(`forge/fragments/mixin-dependency.${buildExt}.template`), tempVars);
+			mixinManifestAttributes = this.processTemplate(await this.readTemplate(`forge/fragments/mixin-manifest.${buildExt}.template`), tempVars);
+		}
+
+        const mappingsChannel = this.data.mappingsChannel || forgeInfo.mappingsChannel;
+        const mappingsVersion = this.data.mappingsVersion || forgeInfo.mappingsVersion;
+
+        const variables = {
+            projectName: this.data.projectName,
+            projectNameLower: this.data.projectName.toLowerCase(),
+            packageName: this.data.packageName,
+            pluginVersion: this.data.pluginVersion,
+            authorName: this.data.authorName,
+            description: this.data.description,
+            website: this.data.website,
+            minecraftVersion: this.data.minecraftVersion,
+            javaVersion: this.data.javaVersion || getRecommendedJavaVersion(this.data.minecraftVersion),
+            modId: modId,
+            gradle_version: gradleVersion,
+            forgeVersion: forgeVersion,
+            forgeGradlePluginVersion: getForgeGradlePluginVersion(this.data.minecraftVersion),
+            packFormat: getPackFormat(this.data.minecraftVersion),
+            mappingsChannel: mappingsChannel,
+            mappingsVersion: mappingsVersion,
+            forgeLicense: this.data.forgeLicense,
+            forgeCredits: this.data.forgeCredits,
+            loaderVersionRange: ranges.loader_version_range,
+            minecraftVersionRange: ranges.minecraft_version_range,
+            forgeVersionRange: ranges.forge_version_range,
+            mixinBuildscript: mixinBuildscript,
+            mixinPlugin: mixinPlugin,
+            mixinConfig: mixinConfig,
+            mixinDependency: mixinDependency,
+			mixinManifestAttributes: mixinManifestAttributes,
+            lombokDependency: useLombok ? await this.readTemplate(isKotlinDSL ? 'forge/fragments/gradle-lombok.kotlin.template' : 'forge/fragments/gradle-lombok.groovy.template') : ""
+        };
+
+        const templateDir = TEMPLATE_DIR_BY_ERA[this.era];
+
+        // mods.toml o mcmod.info
         if (this.isLegacy) {
-            await this._createMcModInfo(projectDirUri);
+            const mcmodInfo = await this.readTemplate(`${templateDir}/mcmod.info.template`);
+            await this.writeFile(
+                vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'mcmod.info'),
+                this.processTemplate(mcmodInfo, variables)
+            );
         } else {
-            await this._createModsToml(projectDirUri);
+            const modsToml = await this.readTemplate(`${templateDir}/mods.toml.template`);
+            const metaDir = vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'META-INF');
+            await vscode.workspace.fs.createDirectory(metaDir);
+            await this.writeFile(vscode.Uri.joinPath(metaDir, 'mods.toml'), this.processTemplate(modsToml, variables));
+
+            const packMcmeta = await this.readTemplate(`${templateDir}/pack.mcmeta.template`);
+            await this.writeFile(
+                vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'pack.mcmeta'),
+                this.processTemplate(packMcmeta, variables)
+            );
         }
-        
-        // Create build files
-        await this._createBuildGradle(projectDirUri);
-        await this._createGradleProperties(projectDirUri);
 
-        // Create main class
-        await this._createMainClass(basePackagePathUri);
-    }
+        // Mixins (opcional)
+        if (this.useMixins) {
+            const mixinsJson = await this.readTemplate(`${templateDir}/mixins.json.template`);
+            await this.writeFile(
+                vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', modId + '.mixins.json'),
+                this.processTemplate(mixinsJson, variables)
+            );
 
-    async _createModsToml(projectDirUri) {
-        const modId = this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const content = `modLoader="javafml"
-loaderVersion="[${this._getLoaderVersion()}]"
-license="${this.data.forgeLicense}"
+            let mixinTemplateName = `ExampleMixin.${ext}.template`;
+            const mixinTemplate = await this.readTemplate(`${templateDir}/${mixinTemplateName}`);
+            await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(basePackagePathUri, 'mixin'));
+            await this.writeFile(
+                vscode.Uri.joinPath(basePackagePathUri, 'mixin', `ExampleMixin.${ext}`),
+                this.processTemplate(mixinTemplate, variables)
+            );
+        }
 
-[[mods]]
-modId="${modId}"
-version="\${file.jarVersion}"
-displayName="${this.data.projectName}"
-authors="${this.data.authorName}"
-description='''
-${this.data.description}
-'''
-`;
-        const metaDir = vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'META-INF');
-        await vscode.workspace.fs.createDirectory(metaDir);
-        await this.writeFile(vscode.Uri.joinPath(metaDir, 'mods.toml'), content);
-    }
+        // build.gradle / build.gradle.kts
+        const buildTemplateName = isKotlinDSL ? 'build.gradle.kts.template' : 'build.gradle.template';
+        const buildFileName = isKotlinDSL ? 'build.gradle.kts' : 'build.gradle';
+        const buildGradle = await this.readTemplate(`${templateDir}/${buildTemplateName}`);
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, buildFileName), this.processTemplate(buildGradle, variables));
 
-    async _createMcModInfo(projectDirUri) {
-        const modId = this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const content = [{
-            "modid": modId,
-            "name": this.data.projectName,
-            "description": this.data.description,
-            "version": "${version}",
-            "mcversion": "${mcversion}",
-            "url": this.data.website,
-            "updateUrl": "",
-            "authorList": [this.data.authorName],
-            "credits": this.data.forgeCredits,
-            "logoFile": "",
-            "screenshots": [],
-            "dependencies": []
-        }];
+        await this._createGradleProperties(projectDirUri, variables);
+        await this._createSettingsGradle(projectDirUri, variables);
+        await this.copyGradleWrapper(projectDirUri, variables);
 
+        // Main class
+        let mainClassTemplateName = `MainClass.${ext}.template`;
+        if (this.era === 'fg6-eventbus7') {
+            mainClassTemplateName = `MainClass.eventbus7.${ext}.template`;
+        }
+        const mainClassTemplate = await this.readTemplate(`${templateDir}/${mainClassTemplateName}`);
         await this.writeFile(
-            vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'mcmod.info'),
-            JSON.stringify(content, null, 4)
+            vscode.Uri.joinPath(basePackagePathUri, `${this.data.projectName}.${ext}`),
+            this.processTemplate(mainClassTemplate, variables)
         );
     }
 
-    async _createBuildGradle(projectDirUri) {
-        let content = '';
-        if (this.isLegacy) {
-            // Very simplified 1.8.9 / 1.12.2 build.gradle
-            content = `buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net/' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '2.1-SNAPSHOT'
-    }
-}
-apply plugin: 'net.minecraftforge.gradle.forge'
-
-version = "1.0"
-group = "${this.data.packageName}"
-archivesBaseName = "${this.data.projectName.toLowerCase()}"
-
-minecraft {
-    version = "${this.data.minecraftVersion}-11.15.1.2318"
-    runDir = "run"
-    mappings = "snapshot_20160518"
-}
-
-processResources {
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
-
-    from(sourceSets.main.resources.srcDirs) {
-        include 'mcmod.info'
-        expand 'version':project.version, 'mcversion':project.minecraft.version
-    }
-}
-`;
-        } else {
-            // Modern Forge (1.20+)
-            content = `plugins {
-    id 'eclipse'
-    id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0, 6.2)'
-}
-
-version = '1.0'
-group = '${this.data.packageName}'
-base {
-    archivesName = '${this.data.projectName.toLowerCase()}'
-}
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(${this.data.javaVersion})
-
-minecraft {
-    mappings channel: 'official', version: '${this.data.minecraftVersion}'
-    copyIdeResources = true
-    runs {
-        client {
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'registe_events'
-            property 'forge.logging.console.level', 'debug'
-            mods {
-                \${project.name} {
-                    source sourceSets.main
-                }
-            }
-        }
-    }
-}
-
-dependencies {
-    minecraft 'net.minecraftforge:forge:${this.data.minecraftVersion}-47.2.0'
-}
-
-tasks.named('processResources', ProcessResources).configure {
-    var replaceProperties = [
-        minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
-        forge_version: forge_version, forge_version_range: forge_version_range,
-        loader_version_range: loader_version_range,
-        mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
-        mod_authors: mod_authors, mod_description: mod_description,
-    ]
-    inputs.properties replaceProperties
-
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties
-    }
-}
-`;
-        }
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'build.gradle'), content);
+    async _createSettingsGradle(projectDirUri, variables) {
+        const templateDir = TEMPLATE_DIR_BY_ERA[this.era];
+        const isKotlinDSL = this.data.buildSystem === 'gradle-kotlin';
+        const templateName = isKotlinDSL ? 'settings.gradle.kts.template' : 'settings.gradle.template';
+        const template = await this.readTemplate(`${templateDir}/${templateName}`);
+        const settingsFileName = isKotlinDSL ? 'settings.gradle.kts' : 'settings.gradle';
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, settingsFileName), this.processTemplate(template, variables));
     }
 
-    async _createGradleProperties(projectDirUri) {
-        const content = `org.gradle.jvmargs=-Xmx2G
-mod_id=${this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}
-mod_name=${this.data.projectName}
-mod_license=${this.data.forgeLicense}
-mod_version=${this.data.pluginVersion}
-mod_authors=${this.data.authorName}
-mod_description=${this.data.description}
-mod_credits=${this.data.forgeCredits}
-
-minecraft_version=${this.data.minecraftVersion}
-minecraft_version_range=[1.20,1.21)
-forge_version=47.2.0
-forge_version_range=[47,)
-loader_version_range=[47,)
-`;
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'gradle.properties'), content);
-    }
-
-    async _createMainClass(basePathUri) {
-        const modId = this.data.projectName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
-
-        if (this.isLegacy) {
-            content = `package ${this.data.packageName};
-
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-
-@Mod(modid = "${modId}", name = "${this.data.projectName}", version = "1.0")
-public class ${this.data.projectName} {
-    @Mod.EventHandler
-    public void init(FMLInitializationEvent event) {
-        System.out.println("Hello from Legacy Forge!");
-    }
-}`;
-        } else {
-            content = `package ${this.data.packageName};
-
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-@Mod("${modId}")
-public class ${this.data.projectName} {
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    public ${this.data.projectName}() {
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
-        MinecraftForge.EVENT_BUS.register(this);
-    }
-
-    private void setup(final FMLCommonSetupEvent event) {
-        LOGGER.info("Hello from Modern Forge!");
-    }
-}`;
-        }
-
-        await this.writeFile(vscode.Uri.joinPath(basePathUri, `${this.data.projectName}.${ext}`), content);
-    }
-
-    _getLoaderVersion() {
-        return "47"; // Default for 1.20.1
+    async _createGradleProperties(projectDirUri, variables) {
+        const templateDir = TEMPLATE_DIR_BY_ERA[this.era];
+        const template = await this.readTemplate(`${templateDir}/gradle.properties.template`);
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'gradle.properties'), this.processTemplate(template, variables));
     }
 }
 
 module.exports = ForgeGenerator;
+

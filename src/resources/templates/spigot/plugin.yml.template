@@ -1,0 +1,8 @@
+main: {{packageName}}.{{projectName}}
+version: {{pluginVersion}}
+name: {{projectName}}
+author: {{authorName}}
+description: {{description}}
+api-version: {{apiVersion}}
+{{dependencies}}
+{{softDependencies}}

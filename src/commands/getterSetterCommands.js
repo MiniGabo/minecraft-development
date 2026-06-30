@@ -8,9 +8,10 @@ async function generateGettersSetters() {
     }
 
     const document = editor.document;
-    const isKotlin = document.languageId === 'kotlin';
+    const languageId = document.languageId.toLowerCase();
+    const isKotlin = languageId === 'kotlin' || document.fileName.endsWith('.kt');
     
-    if (document.languageId !== 'java' && document.languageId !== 'kotlin') {
+    if (languageId !== 'java' && !isKotlin) {
         vscode.window.showErrorMessage('This command only works with Java or Kotlin files');
         return;
     }

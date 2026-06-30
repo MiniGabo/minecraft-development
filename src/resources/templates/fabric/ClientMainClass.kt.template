@@ -1,0 +1,9 @@
+package {{packageName}}.client
+
+import net.fabricmc.api.ClientModInitializer
+
+class {{projectName}}Client : ClientModInitializer {
+    override fun onInitializeClient() {
+        // Client-side initialization logic
+    }
+}

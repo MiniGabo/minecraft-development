@@ -1,0 +1,19 @@
+package {{packageName}}.items;
+
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ActionResult;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.World;
+import net.minecraft.util.EnumHand;
+
+public class {{className}} extends Item {
+    public {{className}}() {
+        super();
+    }
+
+    @Override
+    public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand hand) {
+        return super.onItemRightClick(world, player, hand);
+    }
+}

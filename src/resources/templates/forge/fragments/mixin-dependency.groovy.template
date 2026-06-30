@@ -1,0 +1,5 @@
+	compile ('org.spongepowered:mixin:0.8.5') {
+		exclude module: 'launchwrapper'
+		exclude module: 'guava'
+	}
+	annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'

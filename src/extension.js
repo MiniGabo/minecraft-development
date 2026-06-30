@@ -5,6 +5,7 @@ const CreatePluginPanel = require('./webview/createPluginPanel');
 const { ProjectStructureProvider, ProjectToolsProvider } = require('./views/pluginExplorer');
 const { addCommand, addListener, addConfig } = require('./commands/fileCommands');
 const { addFabricItem, addFabricBlock, addFabricRecipe, addFabricEntity } = require('./commands/fabricCommands');
+const { addForgeItem, addForgeBlock, addForgeRecipe, addForgeEntity } = require('./commands/forgeCommands');
 const { generateGettersSetters } = require('./commands/getterSetterCommands');
 const { fetchMinecraftVersions } = require('./utils/minecraftUtils');
 
@@ -78,6 +79,10 @@ function activate(context) {
         vscode.commands.registerCommand('minecraft-plugin-development.addFabricBlock', () => addFabricBlock(context)),
         vscode.commands.registerCommand('minecraft-plugin-development.addFabricRecipe', () => addFabricRecipe(context)),
         vscode.commands.registerCommand('minecraft-plugin-development.addFabricEntity', () => addFabricEntity(context)),
+        vscode.commands.registerCommand('minecraft-plugin-development.addForgeItem', () => addForgeItem(context)),
+        vscode.commands.registerCommand('minecraft-plugin-development.addForgeBlock', () => addForgeBlock(context)),
+        vscode.commands.registerCommand('minecraft-plugin-development.addForgeRecipe', () => addForgeRecipe(context)),
+        vscode.commands.registerCommand('minecraft-plugin-development.addForgeEntity', () => addForgeEntity(context)),
         vscode.commands.registerCommand('minecraft-plugin-development.generateGettersSetters', generateGettersSetters)
     ];
 
@@ -97,7 +102,8 @@ function updateStatusBarContext(statusBar, workspaceRoot) {
     if (fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'fabric.mod.json'))) {
         type = 'Fabric Mod';
         icon = '$(beaker)';
-    } else if (fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'META-INF', 'mods.toml'))) {
+    } else if (fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'META-INF', 'mods.toml')) ||
+               fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'mcmod.info'))) {
         type = 'Forge Mod';
         icon = '$(tools)';
     } else if (fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'plugin.yml')) || 

@@ -1,0 +1,69 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '{{forgeGradlePluginVersion}}', changing: true
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+
+version = '{{pluginVersion}}'
+group = '{{packageName}}'
+archivesBaseName = '{{projectNameLower}}'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of({{javaVersion}})
+
+minecraft {
+    mappings channel: '{{mappingsChannel}}', version: '{{mappingsVersion}}'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "{{modId}}" {
+                    source sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                "{{modId}}" {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:{{minecraftVersion}}-{{forgeVersion}}'
+{{lombokDependency}}
+}
+
+jar {
+    manifest {
+        attributes([
+            "Specification-Title": "{{projectName}}",
+            "Specification-Vendor": "{{authorName}}",
+            "Specification-Version": "1",
+            "Implementation-Title": project.name,
+            "Implementation-Version": "${version}",
+            "Implementation-Vendor": "{{authorName}}",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}

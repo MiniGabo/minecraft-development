@@ -1,0 +1,66 @@
+plugins {
+    eclipse
+    idea
+    `maven-publish`
+    id("net.minecraftforge.gradle") version "[6.0, 6.2)"
+}
+
+version = "{{pluginVersion}}"
+group = "{{packageName}}"
+
+base {
+    archivesName.set("{{projectNameLower}}")
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of({{javaVersion}}))
+}
+
+minecraft {
+    mappings(mapOf("channel" to "{{mappingsChannel}}", "version" to "{{mappingsVersion}}"))
+    
+    copyIdeResources.set(true)
+    
+    runs {
+        create("client") {
+            workingDirectory(project.file("run"))
+            property("forge.logging.markers", "register_events")
+            property("forge.logging.console.level", "debug")
+            mods {
+                create("{{modId}}") {
+                    source(sourceSets.main.get())
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    "minecraft"("net.minecraftforge:forge:{{minecraftVersion}}-{{forgeVersion}}")
+{{lombokDependency}}
+}
+
+tasks.named<ProcessResources>("processResources").configure {
+    val replaceProperties = mapOf(
+        "minecraft_version" to project.property("minecraft_version"),
+        "minecraft_version_range" to project.property("minecraft_version_range"),
+        "forge_version" to project.property("forge_version"),
+        "forge_version_range" to project.property("forge_version_range"),
+        "loader_version_range" to project.property("loader_version_range"),
+        "mod_id" to project.property("mod_id"),
+        "mod_name" to project.property("mod_name"),
+        "mod_license" to project.property("mod_license"),
+        "mod_version" to project.property("mod_version"),
+        "mod_authors" to project.property("mod_authors"),
+        "mod_description" to project.property("mod_description")
+    )
+    inputs.properties(replaceProperties)
+
+    filesMatching(listOf("META-INF/mods.toml", "pack.mcmeta")) {
+        expand(replaceProperties)
+    }
+}

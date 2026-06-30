@@ -1,0 +1,15 @@
+modLoader="javafml"
+loaderVersion="{{loaderVersionRange}}"
+license="{{forgeLicense}}"
+
+[[mods]]
+modId="{{modId}}"
+version="{{pluginVersion}}"
+displayName="{{projectName}}"
+authors="{{authorName}}"
+description='''
+{{description}}
+'''
+
+[[mixins]]
+config="{{modId}}.mixins.json"

@@ -1,10 +1,11 @@
 const vscode = require('vscode');
 const BaseGenerator = require('./BaseGenerator');
-const { getLatestSpigotVersion } = require('../minecraftUtils');
+const { getLatestSpigotVersion, getLatestPaperVersion } = require('../minecraftUtils');
+const { getRecommendedGradleVersion } = require('../minecraftUtils');
 
 class SpigotGenerator extends BaseGenerator {
-    constructor(data) {
-        super(data);
+    constructor(data, context) {
+        super(data, context);
         this.isKotlin = data.language === 'kotlin';
         this.isPaper = data.apiType === 'paper';
         this.isModern = this._checkIsModern(data.minecraftVersion);
@@ -18,6 +19,34 @@ class SpigotGenerator extends BaseGenerator {
         return major > 1 || (major === 1 && minor >= 16);
     }
 
+    async _getDependencyInfo() {
+        const isPaper = this.isPaper;
+        const mcVersion = this.data.minecraftVersion;
+        const isModern = this.isModern;
+
+        let repoId, repoUrl, depGroupId, depArtifactId, depVersion;
+
+        if (isPaper) {
+            repoId = 'papermc';
+            repoUrl = 'https://repo.papermc.io/repository/maven-public/';
+            // For Paper 1.17+, the groupId changed
+            const parts = mcVersion.split('.').map(Number);
+            const isPaperModern = parts[0] > 1 || (parts[0] === 1 && parts[1] >= 17);
+            
+            depGroupId = isPaperModern ? 'io.papermc.paper' : 'com.destroystokyo.paper';
+            depArtifactId = 'paper-api';
+            depVersion = await getLatestPaperVersion(mcVersion);
+        } else {
+            repoId = 'spigot-repo';
+            repoUrl = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/';
+            depGroupId = 'org.spigotmc';
+            depArtifactId = 'spigot-api';
+            depVersion = await getLatestSpigotVersion(mcVersion);
+        }
+
+        return { repoId, repoUrl, depGroupId, depArtifactId, depVersion };
+    }
+
     async generate(projectDirUri, basePackagePathUri) {
         // Create project files
         await this._createPluginYml(projectDirUri);
@@ -25,7 +54,12 @@ class SpigotGenerator extends BaseGenerator {
         if (this.data.buildSystem === 'maven') {
             await this._createPomXml(projectDirUri);
         } else {
+            const gradleVersion = getRecommendedGradleVersion(this.data.apiType || 'spigot', this.data.minecraftVersion);
+            const variables = { gradle_version: gradleVersion };
+
             await this._createGradleFiles(projectDirUri);
+            await this._createGradleProperties(projectDirUri);
+            await this.copyGradleWrapper(projectDirUri, variables);
         }
 
         // Create main class
@@ -37,480 +71,182 @@ class SpigotGenerator extends BaseGenerator {
         await this._createUtilsClass(basePackagePathUri);
     }
 
+    async _createGradleProperties(projectDirUri) {
+        const template = await this.readTemplate('spigot/gradle.properties.template');
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName,
+            projectName: this.data.projectName,
+            pluginVersion: this.data.pluginVersion,
+            description: this.data.description
+        });
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'gradle.properties'), content);
+    }
+
     async _createPluginYml(projectDirUri) {
-        const content = `main: ${this.data.packageName}.${this.data.projectName}
-version: ${this.data.pluginVersion}
-name: ${this.data.projectName}
-author: ${this.data.authorName}
-description: ${this.data.description}
-api-version: ${this.data.apiVersion}${this.data.dependencies ? `\ndepend: [${this.data.dependencies}]` : ''}${this.data.softDependencies ? `\nsoft-depend: [${this.data.softDependencies}]` : ''}`;
+        const template = await this.readTemplate('spigot/plugin.yml.template');
+        
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName,
+            projectName: this.data.projectName,
+            pluginVersion: this.data.pluginVersion,
+            authorName: this.data.authorName,
+            description: this.data.description,
+            apiVersion: this.data.apiVersion,
+            dependencies: this.data.dependencies ? `\ndepend: [${this.data.dependencies}]` : '',
+            softDependencies: this.data.softDependencies ? `\nsoft-depend: [${this.data.softDependencies}]` : ''
+        });
 
         await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'src', 'main', 'resources', 'plugin.yml'), content);
     }
 
     async _createMainClass(basePathUri) {
         const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
-
-        if (this.isKotlin) {
-            content = `package ${this.data.packageName}
-
-import org.bukkit.plugin.java.JavaPlugin
-import ${this.data.packageName}.managers.PluginManager
-import ${this.data.packageName}.listeners.PlayerListener
-
-class ${this.data.projectName} : JavaPlugin() {
-    
-    override fun onEnable() {
-        // Initialize managers
-        PluginManager.initialize()
+        const templateName = `MainClass.${ext}.template`;
+        const template = await this.readTemplate(`spigot/${templateName}`);
         
-        // Register listeners
-        server.pluginManager.registerEvents(PlayerListener(), this)
-        
-        logger.info("\${description.name} has been enabled!")
-    }
-
-    override fun onDisable() {
-        logger.info("\${description.name} has been disabled!")
-    }
-}`;
-        } else {
-            content = `package ${this.data.packageName};
-
-import org.bukkit.plugin.java.JavaPlugin;
-import ${this.data.packageName}.managers.PluginManager;
-import ${this.data.packageName}.listeners.PlayerListener;
-
-public class ${this.data.projectName} extends JavaPlugin {
-    
-    @Override
-    public void onEnable() {
-        
-        // Initialize managers
-        PluginManager.getInstance().initialize();
-        
-        // Register listeners
-        getServer().getPluginManager().registerEvents(new PlayerListener(), this);
-        
-        getLogger().info(getDescription().getName() + " has been enabled!");
-    }
-
-    @Override
-    public void onDisable() {
-        getLogger().info(getDescription().getName() + " has been disabled!");
-    }
-    
-}`;
-        }
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName,
+            projectName: this.data.projectName
+        });
 
         await this.writeFile(vscode.Uri.joinPath(basePathUri, `${this.data.projectName}.${ext}`), content);
     }
 
     async _createPomXml(projectDirUri) {
-        const repoId = this.isPaper ? 'papermc' : 'spigot-repo';
-        const repoUrl = this.isPaper ? 'https://repo.papermc.io/repository/maven-public/' : 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/';
-        const depGroupId = this.isPaper ? 'io.papermc.paper' : 'org.spigotmc';
-        const depArtifactId = this.isPaper ? 'paper-api' : 'spigot-api';
-        const depVersion = this.isPaper ? `${this.data.minecraftVersion}-R0.1-SNAPSHOT` : `${await getLatestSpigotVersion(this.data.minecraftVersion)}`;
+        const template = await this.readTemplate('spigot/pom.xml.template');
+        const depInfo = await this._getDependencyInfo();
 
         let lombokDependency = '';
         let lombokPlugin = '';
 
         if (this.data.useLombok && !this.isKotlin) {
-            lombokDependency = `
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.34</version>
-            <scope>provided</scope>
-        </dependency>`;
-
-            lombokPlugin = `
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <source>\${maven.compiler.source}</source>
-                    <target>\${maven.compiler.target}</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>1.18.34</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>`;
+            lombokDependency = (await this.readTemplate('spigot/fragments/maven-lombok-dep.xml.template')).trim();
+            lombokPlugin = (await this.readTemplate('spigot/fragments/maven-lombok-plugin.xml.template')).trim();
         }
 
         let kotlinDeps = '';
         let kotlinPlugins = '';
         if (this.isKotlin) {
-            kotlinDeps = `
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib</artifactId>
-            <version>1.9.22</version>
-        </dependency>`;
-            kotlinPlugins = `
-            <plugin>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-maven-plugin</artifactId>
-                <version>1.9.22</version>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>`;
+            kotlinDeps = (await this.readTemplate('spigot/fragments/maven-kotlin-dep.xml.template')).trim();
+            kotlinPlugins = (await this.readTemplate('spigot/fragments/maven-kotlin-plugin.xml.template')).trim();
         }
 
-        const content = `<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://www.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>${this.data.packageName}</groupId>
-    <artifactId>${this.data.projectName}</artifactId>
-    <version>${this.data.pluginVersion}</version>
-    
-    <name>${this.data.projectName}</name>
-    <url>${this.data.website}</url>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>${this.data.javaVersion}</maven.compiler.source>
-        <maven.compiler.target>${this.data.javaVersion}</maven.compiler.target>
-    </properties>
-
-    <repositories>
-        <repository>
-            <id>${repoId}</id>
-            <url>${repoUrl}</url>
-        </repository>
-    </repositories>
-
-    <dependencies>
-        <dependency>
-            <groupId>${depGroupId}</groupId>
-            <artifactId>${depArtifactId}</artifactId>
-            <version>${depVersion}</version>
-            <scope>provided</scope>
-        </dependency>${kotlinDeps}${lombokDependency}
-    </dependencies>
-
-    <build>
-        <sourceDirectory>\${project.basedir}/src/main/${this.isKotlin ? 'kotlin' : 'java'}</sourceDirectory>
-        <resources>
-            <resource>
-                <directory>\${project.basedir}/src/main/resources</directory>
-                <includes>
-                    <include>plugin.yml</include>
-                </includes>
-            </resource>
-        </resources>
-        <plugins>${kotlinPlugins}${lombokPlugin}
-        </plugins>
-    </build>
-</project>`;
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName,
+            projectName: this.data.projectName,
+            pluginVersion: this.data.pluginVersion,
+            website: this.data.website,
+            javaVersion: this.data.javaVersion,
+            repoId: depInfo.repoId,
+            repoUrl: depInfo.repoUrl,
+            depGroupId: depInfo.depGroupId,
+            depArtifactId: depInfo.depArtifactId,
+            depVersion: depInfo.depVersion,
+            kotlinDeps: kotlinDeps ? `        ${kotlinDeps}` : '',
+            lombokDependency: lombokDependency ? `        ${lombokDependency}` : '',
+            sourceDir: this.isKotlin ? 'kotlin' : 'java',
+            kotlinPlugins: kotlinPlugins ? `            ${kotlinPlugins}` : '',
+            lombokPlugin: lombokPlugin ? `            ${lombokPlugin}` : ''
+        });
 
         await this.writeFile(vscode.Uri.joinPath(projectDirUri, 'pom.xml'), content);
     }
 
     async _createGradleFiles(projectDirUri) {
         const isKotlinDSL = this.data.buildSystem === 'gradle-kotlin';
-        const repoUrl = this.isPaper ? 'https://repo.papermc.io/repository/maven-public/' : 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/';
-        const depGroupId = this.isPaper ? 'io.papermc.paper' : 'org.spigotmc';
-        const depArtifactId = this.isPaper ? 'paper-api' : 'spigot-api';
-        const depVersion = this.isPaper ? `${this.data.minecraftVersion}-R0.1-SNAPSHOT` : `${await getLatestSpigotVersion(this.data.minecraftVersion)}`;
+        const ext = isKotlinDSL ? 'kts' : 'groovy';
+        const templateName = isKotlinDSL ? 'build.gradle.kts.template' : 'build.gradle.template';
+        const settingsTemplateName = isKotlinDSL ? 'settings.gradle.kts.template' : 'settings.gradle.template';
+        
+        const template = await this.readTemplate('spigot/' + templateName);
+        const settingsTemplate = await this.readTemplate('spigot/' + settingsTemplateName);
+        const depInfo = await this._getDependencyInfo();
 
-
-        let buildGradle = '';
-        if (isKotlinDSL) {
-            buildGradle = `plugins {
-    ${this.isKotlin ? 'kotlin("jvm") version "1.9.22"' : 'java'}
-    id("com.github.johnrengelman.shadow") version "8.1.1"
-}
-
-group = "${this.data.packageName}"
-version = "${this.data.pluginVersion}"
-
-repositories {
-    mavenCentral()
-    maven("${repoUrl}")
-}
-
-dependencies {
-    compileOnly("${depGroupId}:${depArtifactId}:${depVersion}")${this.data.useLombok && !this.isKotlin ? '\n    compileOnly("org.projectlombok:lombok:1.18.34")\n    annotationProcessor("org.projectlombok:lombok:1.18.34")' : ''}${this.isKotlin ? '\n    implementation(kotlin("stdlib"))' : ''}
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
-    sourceCompatibility = "${this.data.javaVersion}"
-    targetCompatibility = "${this.data.javaVersion}"
-}
-
-tasks.processResources {
-    val props = mapOf("version" to version)
-    inputs.properties(props)
-    filteringCharset = "UTF-8"
-    filesMatching("plugin.yml") {
-        expand(props)
-    }
-}
-`;
-        } else {
-            buildGradle = `plugins {
-    id 'java'
-    ${this.isKotlin ? "id 'org.jetbrains.kotlin.jvm' version '1.9.22'" : ''}
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
-}
-
-group = '${this.data.packageName}'
-version = '${this.data.pluginVersion}'
-
-repositories {
-    mavenCentral()
-    maven {
-        url = '${repoUrl}'
-    }
-}
-
-dependencies {
-    compileOnly '${depGroupId}:${depArtifactId}:${depVersion}'${this.data.useLombok && !this.isKotlin ? '\n    compileOnly "org.projectlombok:lombok:1.18.34"\n    annotationProcessor "org.projectlombok:lombok:1.18.34"' : ''}${this.isKotlin ? "\n    implementation 'org.jetbrains.kotlin:kotlin-stdlib'" : ''}
-}
-
-processResources {
-    def props = [version: version]
-    inputs.properties props
-    filteringCharset 'UTF-8'
-    filesMatching('plugin.yml') {
-        expand props
-    }
-}
-
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(${this.data.javaVersion})
-}
-`;
+        let lombokDependency = '';
+        if (this.data.useLombok && !this.isKotlin) {
+            lombokDependency = (await this.readTemplate(`spigot/fragments/gradle-lombok.${isKotlinDSL ? 'kts' : 'groovy'}.template`)).trim();
         }
 
-        const settingsGradle = isKotlinDSL 
-            ? `rootProject.name = "${this.data.projectName}"\n`
-            : `rootProject.name = '${this.data.projectName}'\n`;
+        const kotlinPlugin = this.isKotlin ? (await this.readTemplate(`spigot/fragments/gradle-kotlin-plugin.${isKotlinDSL ? 'kts' : 'groovy'}.template`)).trim() : '';
+        const kotlinStdlib = this.isKotlin ? (await this.readTemplate(`spigot/fragments/gradle-kotlin-stdlib.${isKotlinDSL ? 'kts' : 'groovy'}.template`)).trim() : '';
+
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName,
+            projectName: this.data.projectName,
+            pluginVersion: this.data.pluginVersion,
+            repoUrl: depInfo.repoUrl,
+            depGroupId: depInfo.depGroupId,
+            depArtifactId: depInfo.depArtifactId,
+            depVersion: depInfo.depVersion,
+            lombokDependency: lombokDependency ? `${lombokDependency}` : '',
+            kotlinPlugin,
+            kotlinStdlib: kotlinStdlib ? `${kotlinStdlib}` : '',
+            javaVersion: this.data.javaVersion
+        });
+
+        const settingsContent = this.processTemplate(settingsTemplate, {
+            projectName: this.data.projectName
+        });
 
         const buildFileName = isKotlinDSL ? 'build.gradle.kts' : 'build.gradle';
         const settingsFileName = isKotlinDSL ? 'settings.gradle.kts' : 'settings.gradle';
 
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, buildFileName), buildGradle);
-        await this.writeFile(vscode.Uri.joinPath(projectDirUri, settingsFileName), settingsGradle);
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, buildFileName), content);
+        await this.writeFile(vscode.Uri.joinPath(projectDirUri, settingsFileName), settingsContent);
     }
 
     async _createManagerClass(basePathUri) {
         const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
+        const template = await this.readTemplate('spigot/PluginManager.' + ext + '.template');
+        
+        let variables = {
+            packageName: this.data.packageName
+        };
 
         if (this.isKotlin) {
-            content = `package ${this.data.packageName}.managers
-
-object PluginManager {
-    fun initialize() {
-        // Initialize your managers here
-    }
-}`;
-        } else if (this.data.useLombok) {
-            content = `package ${this.data.packageName}.managers;
-
-import lombok.Getter;
-
-public class PluginManager {
-    @Getter
-    private static final PluginManager instance = new PluginManager();
-    
-    private PluginManager() {}
-    
-    public void initialize() {
-        // Initialize your managers here
-    }
-}`;
+            // Kotlin implementation (already singleton in template likely)
         } else {
-            content = `package ${this.data.packageName}.managers;
-
-public class PluginManager {
-    private static PluginManager instance;
-    
-    public static PluginManager getInstance() {
+            if (this.data.useLombok) {
+                variables.lombokImport = 'import lombok.Getter;';
+                variables.instanceField = '@Getter private static final PluginManager instance = new PluginManager();';
+                variables.instanceMethod = '';
+            } else {
+                variables.lombokImport = '';
+                variables.instanceField = 'private static PluginManager instance;';
+                variables.instanceMethod = `public static PluginManager getInstance() {
         if (instance == null) {
             instance = new PluginManager();
         }
         return instance;
-    }
-    
-    public void initialize() {
-        // Initialize your managers here
-    }
-}`;
+    }`;
+            }
         }
+
+        const content = this.processTemplate(template, variables);
 
         await this.writeFile(vscode.Uri.joinPath(basePathUri, 'managers', `PluginManager.${ext}`), content);
     }
 
     async _createListenerClass(basePathUri) {
         const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
-
-        if (this.isKotlin) {
-            content = `package ${this.data.packageName}.listeners
-
-import org.bukkit.event.Listener
-import org.bukkit.event.EventHandler
-import org.bukkit.event.player.PlayerJoinEvent
-
-class PlayerListener : Listener {
-    
-    @EventHandler
-    fun onPlayerJoin(event: PlayerJoinEvent) {
-        // Handle player join event
-    }
-}`;
-        } else {
-            content = `package ${this.data.packageName}.listeners;
-
-import org.bukkit.event.Listener;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.player.PlayerJoinEvent;
-
-public class PlayerListener implements Listener {
-    
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        // Handle player join event
-    }
-}`;
-        }
+        const template = await this.readTemplate('spigot/PlayerListener.' + ext + '.template');
+        
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName
+        });
 
         await this.writeFile(vscode.Uri.joinPath(basePathUri, 'listeners', `PlayerListener.${ext}`), content);
     }
 
     async _createUtilsClass(basePathUri) {
         const ext = this.isKotlin ? 'kt' : 'java';
-        let content = '';
-
-        if (this.isKotlin) {
-            if (this.isPaper && this.isModern) {
-                content = `package ${this.data.packageName}.utils
-
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-
-object Utils {
-    
-    fun colorize(msg: String): Component {
-        if (msg.contains("<") && msg.contains(">")) {
-            return MiniMessage.miniMessage().deserialize(msg)
-        }
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(msg)
-    }
-    
-    fun legacyColorize(msg: String): String {
-        return LegacyComponentSerializer.legacyAmpersand().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(msg)
-        )
-    }
-}`;
-            } else if (this.isModern) {
-                content = `package ${this.data.packageName}.utils
-
-import java.util.regex.Pattern
-import net.md_5.bungee.api.ChatColor
-
-object Utils {
-    
-    fun colorize(msg: String): String {
-        var message = msg
-        val match = Pattern.compile("#[a-fA-F0-9]{6}").matcher(message)
-        while (match.find()) {
-            val color = message.substring(match.start(), match.end())
-            message = message.replace(color, ChatColor.of(color).toString())
-        }
-        return ChatColor.translateAlternateColorCodes('&', message)
-    }
-}`;
-            } else {
-                content = `package ${this.data.packageName}.utils
-
-import org.bukkit.ChatColor
-
-object Utils {
-    
-    fun colorize(msg: String): String {
-        return ChatColor.translateAlternateColorCodes('&', msg)
-    }
-}`;
-            }
-        } else {
-            if (this.isPaper && this.isModern) {
-                content = `package ${this.data.packageName}.utils;
-
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-
-public class Utils {
-    
-    public static Component colorize(String msg) {
-        if (msg.contains("<") && msg.contains(">")) {
-            return MiniMessage.miniMessage().deserialize(msg);
-        }
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(msg);
-    }
-    
-    public static String legacyColorize(String msg) {
-        return LegacyComponentSerializer.legacyAmpersand().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(msg)
-        );
-    }
-}`;
-            } else if (this.isModern) {
-                content = `package ${this.data.packageName}.utils;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import net.md_5.bungee.api.ChatColor;
-
-public class Utils {
-    
-    public static String colorize(String msg) {
-        Matcher match = Pattern.compile("#[a-fA-F0-9]{6}").matcher(msg);
-        while (match.find()) {
-            String color = msg.substring(match.start(), match.end());
-            msg = msg.replace(color, String.valueOf(ChatColor.of(color)));
-            match = Pattern.compile("#[a-fA-F0-9]{6}").matcher(msg);
-        }
-        return ChatColor.translateAlternateColorCodes('&', msg);
-    }
-}`;
-            } else {
-                content = `package ${this.data.packageName}.utils;
-
-import org.bukkit.ChatColor;
-
-public class Utils {
-    
-    public static String colorize(String msg) {
-        return ChatColor.translateAlternateColorCodes('&', msg);
-    }
-}`;
-            }
-        }
+        const versionDir = this.isModern ? 'modern' : 'legacy';
+        
+        const template = await this.readTemplate(`spigot/${versionDir}/Utils.${ext}.template`);
+        
+        const content = this.processTemplate(template, {
+            packageName: this.data.packageName
+        });
 
         await this.writeFile(vscode.Uri.joinPath(basePathUri, 'utils', `Utils.${ext}`), content);
     }

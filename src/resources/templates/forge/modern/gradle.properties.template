@@ -1,0 +1,14 @@
+org.gradle.jvmargs=-Xmx2G
+mod_id={{modId}}
+mod_name={{projectName}}
+mod_license={{forgeLicense}}
+mod_version={{pluginVersion}}
+mod_authors={{authorName}}
+mod_description={{description}}
+mod_credits={{forgeCredits}}
+
+minecraft_version={{minecraftVersion}}
+minecraft_version_range={{minecraftVersionRange}}
+forge_version={{forgeVersion}}
+forge_version_range={{forgeVersionRange}}
+loader_version_range={{loaderVersionRange}}

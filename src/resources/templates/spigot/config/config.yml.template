@@ -1,0 +1,18 @@
+# Basic Configuration
+settings:
+    debug: false
+    auto-update: true
+
+# Plugin features
+features:
+    feature1: true
+    feature2: false
+
+# Custom settings
+custom:
+    message: 'Hello, World!'
+    cooldown: 60
+    worlds:
+        - world
+        - world_nether
+        - world_the_end

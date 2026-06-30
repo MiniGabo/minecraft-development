@@ -1,0 +1,16 @@
+# Custom Configuration
+# Add your custom configuration here
+
+# Example:
+example:
+    enabled: true
+    value: 42
+    list:
+        - item1
+        - item2
+        - item3
+
+# Add more sections as needed
+section:
+    subsection:
+        key: value

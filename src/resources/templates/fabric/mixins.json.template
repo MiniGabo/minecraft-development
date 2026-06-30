@@ -1,0 +1,11 @@
+{
+    "required": true,
+    "package": "{{packageName}}.mixin",
+    "compatibilityLevel": "JAVA_{{javaVersion}}",
+    "mixins": [
+        {{commonMixins}}
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

@@ -1,0 +1,16 @@
+[
+{
+  "modid": "{{modId}}",
+  "name": "{{projectName}}",
+  "description": "{{description}}",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "{{website}}",
+  "updateUrl": "",
+  "authorList": ["{{authorName}}"],
+  "credits": "{{forgeCredits}}",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

@@ -1,0 +1,6 @@
+package {{packageName}}.entities
+
+import net.minecraft.entity.EntityCreature
+import net.minecraft.world.World
+
+class {{className}}(worldIn: World) : EntityCreature(worldIn)

@@ -1,0 +1,19 @@
+package {{packageName}}.items;
+
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.{{actionResultClass}};
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.World;
+import net.minecraft.util.Hand;
+
+public class {{className}} extends Item {
+    public {{className}}(Item.Settings settings) {
+        super(settings);
+    }
+
+    @Override
+    public {{actionResultClass}}{{genericType}} use(World world, PlayerEntity user, Hand hand) {
+        return super.use(world, user, hand);
+    }
+}

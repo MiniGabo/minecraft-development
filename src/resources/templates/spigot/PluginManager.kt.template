@@ -1,0 +1,7 @@
+package {{packageName}}.managers
+
+object PluginManager {
+    fun initialize() {
+        // Initialize your managers here
+    }
+}

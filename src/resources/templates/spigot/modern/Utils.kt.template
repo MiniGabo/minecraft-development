@@ -1,0 +1,17 @@
+package {{packageName}}.utils
+
+import java.util.regex.Pattern
+import net.md_5.bungee.api.ChatColor
+
+object Utils {
+    
+    fun colorize(msg: String): String {
+        var message = msg
+        val match = Pattern.compile("#[a-fA-F0-9]{6}").matcher(message)
+        while (match.find()) {
+            val color = message.substring(match.start(), match.end())
+            message = message.replace(color, ChatColor.of(color).toString())
+        }
+        return ChatColor.translateAlternateColorCodes('&', message)
+    }
+}

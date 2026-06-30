@@ -1,0 +1,11 @@
+package {{packageName}}.entities;
+
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.level.Level;
+
+public class {{className}} extends PathfinderMob {
+    public {{className}}(EntityType<? extends PathfinderMob> type, Level level) {
+        super(type, level);
+    }
+}

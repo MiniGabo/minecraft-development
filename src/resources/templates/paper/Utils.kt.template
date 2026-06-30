@@ -1,0 +1,21 @@
+package {{packageName}}.utils
+
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+
+object Utils {
+    
+    fun colorize(msg: String): Component {
+        if (msg.contains("<") && msg.contains(">")) {
+            return MiniMessage.miniMessage().deserialize(msg)
+        }
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(msg)
+    }
+    
+    fun legacyColorize(msg: String): String {
+        return LegacyComponentSerializer.legacyAmpersand().serialize(
+            LegacyComponentSerializer.legacyAmpersand().deserialize(msg)
+        )
+    }
+}

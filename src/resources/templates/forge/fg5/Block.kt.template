@@ -1,0 +1,6 @@
+package {{packageName}}.blocks
+
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockBehaviour
+
+class {{className}}(properties: BlockBehaviour.Properties) : Block(properties)

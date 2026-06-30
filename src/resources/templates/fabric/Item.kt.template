@@ -1,0 +1,14 @@
+package {{packageName}}.items
+
+import net.minecraft.item.Item
+import net.minecraft.item.ItemStack
+import net.minecraft.util.{{actionResultClass}}
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.world.World
+import net.minecraft.util.Hand
+
+class {{className}}(settings: Item.Settings) : Item(settings) {
+    override fun use(world: World, user: PlayerEntity, hand: Hand): {{actionResultClass}}{{genericType}} {
+        return super.use(world, user, hand)
+    }
+}

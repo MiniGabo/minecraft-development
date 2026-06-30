@@ -1,6 +1,11 @@
 const vscode = require('vscode');
 const path = require('path');
-const { fetchMinecraftVersions, fetchFabricGameVersions, fetchForgeVersions } = require('../utils/minecraftUtils');
+const { 
+    fetchMinecraftVersions, 
+    fetchPaperVersions, 
+    fetchFabricGameVersions, 
+    fetchForgeVersions 
+} = require('../utils/minecraftUtils');
 const ProjectGenerator = require('../utils/projectGenerator');
 
 class CreatePluginPanel {
@@ -53,6 +58,31 @@ class CreatePluginPanel {
                     case 'ready':
                         await this._sendVersions();
                         return;
+                    case 'getRecommendedVersions':
+                        if (message.platform === 'fabric') {
+                            const { getFabricVersionData } = require('../utils/fabricUtils');
+                            const versionData = getFabricVersionData(message.minecraftVersion);
+                            this.panel.webview.postMessage({
+                                command: 'setFabricDefaults',
+                                loom: versionData.loom_version,
+                                loader: versionData.loader_version,
+                                yarn: versionData.yarn_mappings,
+                                fabric: versionData.fabric_version
+                            });
+                        } else if (message.platform === 'forge') {
+                            const { getForgeVersionData } = require('../utils/forgeUtils');
+                            const { getRecommendedJavaVersion } = require('../utils/minecraftUtils');
+                            const versionData = getForgeVersionData(message.minecraftVersion);
+                            const recommendedJava = getRecommendedJavaVersion(message.minecraftVersion);
+                            this.panel.webview.postMessage({
+                                command: 'setForgeDefaults',
+                                forge: versionData.forge,
+                                mappingsChannel: versionData.mappingsChannel,
+                                mappingsVersion: versionData.mappingsVersion,
+                                javaVersion: recommendedJava
+                            });
+                        }
+                        return;
                     case 'createPlugin':
                         await this._createPlugin(message.data);
                         return;
@@ -81,18 +111,22 @@ class CreatePluginPanel {
     }
 
     async _sendVersions() {
-        const [spigotVersions, fabricVersions, forgeVersions] = await Promise.all([
+        const [spigotVersions, paperVersions, fabricVersions, forgeVersions, fabricApi] = await Promise.all([
             fetchMinecraftVersions(),
+            fetchPaperVersions(),
             fetchFabricGameVersions(),
-            fetchForgeVersions()
+            fetchForgeVersions(),
+            require('../utils/fabricUtils').fetchFabricApiVersions()
         ]);
 
         // Send all version sets to webview
         this.panel.webview.postMessage({
             command: 'setVersions',
             spigot: spigotVersions,
+            paper: paperVersions,
             fabric: fabricVersions,
-            forge: forgeVersions
+            forge: forgeVersions,
+            fabricApi: fabricApi
         });
     }
 
@@ -102,7 +136,7 @@ class CreatePluginPanel {
                 canSelectFiles: false,
                 canSelectFolders: true,
                 canSelectMany: false,
-                title: 'Select Location for Minecraft Plugin Project'
+                title: 'Select Location for Minecraft Project'
             });
 
             if (!uri || uri.length === 0) return;
@@ -117,22 +151,8 @@ class CreatePluginPanel {
             await vscode.workspace.fs.createDirectory(basePackagePath);
             await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(pluginDirUri, 'src', 'main', 'resources'));
 
-            // Create sub-packages based on project type
-            let packages = [];
-            if (data.projectType === 'plugin') {
-                packages = ['managers', 'listeners', 'utils'];
-            } else if (data.projectType === 'fabric') {
-                packages = ['mixin', 'registry', 'items'];
-            } else if (data.projectType === 'forge') {
-                packages = ['init', 'item', 'block'];
-            }
-
-            for (const pkg of packages) {
-                await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(basePackagePath, pkg));
-            }
-
             // Generate project using the generator factory
-            const generator = ProjectGenerator.createGenerator(data);
+            const generator = ProjectGenerator.createGenerator(data, this.context);
             await generator.generate(pluginDirUri, basePackagePath);
 
             vscode.commands.executeCommand('vscode.openFolder', pluginDirUri);

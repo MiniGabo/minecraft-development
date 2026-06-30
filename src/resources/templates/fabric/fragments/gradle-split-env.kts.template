@@ -1,0 +1,10 @@
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		create("{{mod_id}}") {
+			sourceSet(sourceSets.main.get())
+			sourceSet(sourceSets.getByName("client"))
+		}
+	}
+}

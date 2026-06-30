@@ -1,0 +1,71 @@
+{{mixinBuildscript}}
+
+buildscript {
+    repositories {
+        jcenter()
+        maven { url = 'https://files.minecraftforge.net/maven' }
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+{{mixinPlugin}}
+
+version = '{{pluginVersion}}'
+group = '{{packageName}}'
+archivesBaseName = '{{modId}}'
+
+minecraft {
+    version = '{{minecraftVersion}}-{{forgeVersion}}'
+    runDir = 'run'
+    mappings = '{{mappingsChannel}}_{{mappingsVersion}}'
+{{mixinConfig}}
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/java'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
+}
+
+dependencies {
+{{mixinDependency}}
+{{lombokDependency}}
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', project.minecraft.version
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title' : '{{projectName}}',
+            'Specification-Vendor' : '{{authorName}}',
+            'Specification-Version' : '1',
+            'Implementation-Title' : project.name,
+            'Implementation-Version' : version,
+            'Implementation-Vendor' : '{{authorName}}',
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"){{mixinManifestAttributes}}
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

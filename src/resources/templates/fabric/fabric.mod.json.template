@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 1,
+    "id": "{{modId}}",
+    "version": "${version}",
+    "name": "{{projectName}}",
+    "description": "{{description}}",
+    "authors": ["{{authorName}}"],
+    "contact": {
+        "homepage": "{{website}}",
+        "sources": "{{website}}"
+    },
+    "license": "MIT",
+    "icon": "assets/{{modId}}/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "{{packageName}}.{{projectName}}"
+        ]{{clientEntrypoint}}
+    },
+    "mixins": [
+        "{{modId}}.mixins.json"{{clientMixinsConfig}}
+    ],
+    "depends": {
+        "fabricloader": ">=0.15.0",
+        "minecraft": "~{{minecraftVersion}}",
+        "java": ">={{javaVersion}}"
+    }
+}

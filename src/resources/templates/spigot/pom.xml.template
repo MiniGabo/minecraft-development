@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://www.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>{{packageName}}</groupId>
+    <artifactId>{{projectName}}</artifactId>
+    <version>{{pluginVersion}}</version>
+    
+    <name>{{projectName}}</name>
+    <url>{{website}}</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>{{javaVersion}}</maven.compiler.source>
+        <maven.compiler.target>{{javaVersion}}</maven.compiler.target>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>{{repoId}}</id>
+            <url>{{repoUrl}}</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>{{depGroupId}}</groupId>
+            <artifactId>{{depArtifactId}}</artifactId>
+            <version>{{depVersion}}</version>
+            <scope>provided</scope>
+        </dependency>
+{{kotlinDeps}}
+{{lombokDependency}}
+    </dependencies>
+
+    <build>
+        <sourceDirectory>${project.basedir}/src/main/{{sourceDir}}</sourceDirectory>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+{{kotlinPlugins}}
+{{lombokPlugin}}
+        </plugins>
+    </build>
+</project>

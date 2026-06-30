@@ -17,3 +17,5 @@ package-lock.json
 pnpm-workspace.yaml
 .npmrc
 yarn.lock
+.antigravity
+.antigravitycli
