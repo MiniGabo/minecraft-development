@@ -1,0 +1,9 @@
+group={{packageName}}.{{projectName}}
+version={{pluginVersion}}
+description={{description}}
+
+# Gradle properties
+org.gradle.jvmargs=-Xmx1G
+org.gradle.configuration-cache=false
+org.gradle.parallel=true
+org.gradle.caching=true

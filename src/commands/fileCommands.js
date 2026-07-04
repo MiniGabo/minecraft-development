@@ -4,6 +4,49 @@ const fs = require('fs');
 const { findBasePackage } = require('../utils/packageUtils');
 const { readTemplate, processTemplate } = require('../utils/templateUtils');
 
+function _isVelocityProject(workspaceRoot) {
+    const buildGradle = path.join(workspaceRoot, 'build.gradle');
+    const buildGradleKts = path.join(workspaceRoot, 'build.gradle.kts');
+    const pomXml = path.join(workspaceRoot, 'pom.xml');
+
+    for (const file of [buildGradle, buildGradleKts, pomXml]) {
+        if (fs.existsSync(file)) {
+            const content = fs.readFileSync(file, 'utf8');
+            if (content.includes('velocity-api')) return true;
+        }
+    }
+    return false;
+}
+
+function _getPluginId(workspaceRoot) {
+    // Try to get pluginId from plugin.yml (Spigot/Paper)
+    const pluginYml = path.join(workspaceRoot, 'src', 'main', 'resources', 'plugin.yml');
+    if (fs.existsSync(pluginYml)) {
+        const content = fs.readFileSync(pluginYml, 'utf8');
+        const match = content.match(/^name:\s*(.+)$/m);
+        if (match) return match[1].trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+    }
+
+    // Try to get from main class @Plugin annotation (Velocity)
+    const srcDirs = ['src/main/java', 'src/main/kotlin'];
+    for (const srcDir of srcDirs) {
+        const srcPath = path.join(workspaceRoot, srcDir);
+        if (!fs.existsSync(srcPath)) continue;
+        
+        const files = fs.readdirSync(srcPath, { recursive: true, withFileTypes: true })
+            .filter(f => f.isFile() && (f.name.endsWith('.java') || f.name.endsWith('.kt')))
+            .map(f => path.join(f.parentPath || f.path, f.name));
+        
+        for (const file of files) {
+            const content = fs.readFileSync(file, 'utf8');
+            const match = content.match(/@Plugin\s*\([^)]*id\s*=\s*["']([^"']+)["']/);
+            if (match) return match[1];
+        }
+    }
+
+    return null;
+}
+
 async function addCommand(context) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -12,6 +55,7 @@ async function addCommand(context) {
     }
 
     const isFabric = fs.existsSync(path.join(workspaceFolders[0].uri.fsPath, 'src', 'main', 'resources', 'fabric.mod.json'));
+    const isVelocity = _isVelocityProject(workspaceFolders[0].uri.fsPath);
     
     if (isFabric) {
         vscode.window.showInformationMessage('This feature is currently optimized for Spigot/Paper. Fabric support for specific components is coming soon!');
@@ -64,11 +108,15 @@ async function addCommand(context) {
     fs.mkdirSync(commandDir, { recursive: true });
     const commandFile = path.join(commandDir, `${commandName}Command.${ext}`);
 
-    const template = await readTemplate(context, `spigot/Command.${ext}.template`);
+    const pluginId = _getPluginId(workspaceFolders[0].uri.fsPath) || basePackage.name.split('.').pop().toLowerCase();
+
+    const platform = isVelocity ? 'velocity' : 'spigot';
+    const template = await readTemplate(context, `${platform}/Command.${ext}.template`);
     const content = processTemplate(template, {
         packageName: basePackage.name,
         subPackage: packageName,
-        commandName: commandName
+        commandName: commandName,
+        pluginId: pluginId
     });
 
     fs.writeFileSync(commandFile, content);
@@ -88,6 +136,7 @@ async function addListener(context) {
     }
 
     const isFabric = fs.existsSync(path.join(workspaceFolders[0].uri.fsPath, 'src', 'main', 'resources', 'fabric.mod.json'));
+    const isVelocity = _isVelocityProject(workspaceFolders[0].uri.fsPath);
     
     if (isFabric) {
         vscode.window.showInformationMessage('This feature is currently optimized for Spigot/Paper. Fabric support for specific components is coming soon!');
@@ -103,13 +152,34 @@ async function addListener(context) {
     const isKotlin = basePackage.path.includes('src/main/kotlin') || basePackage.path.includes('src\\main\\kotlin');
     const ext = isKotlin ? 'kt' : 'java';
 
-    const events = [
+    const spigotEvents = [
         'PlayerJoin', 'PlayerQuit', 'PlayerMove',
         'BlockBreak', 'BlockPlace',
         'EntityDamage', 'EntityDeath',
         'InventoryClick', 'InventoryOpen',
         'Custom'
     ];
+
+    const velocityEvents = [
+        'PostLogin', 'Disconnect',
+        'ServerConnected', 'ServerPostConnect',
+        'ServerPing', 'PlayerChat',
+        'ProxyInitialize', 'ProxyReload',
+        'Custom'
+    ];
+
+    const velocityEventImports = {
+        'PostLogin': 'com.velocitypowered.api.event.connection.PostLoginEvent',
+        'Disconnect': 'com.velocitypowered.api.event.connection.DisconnectEvent',
+        'ServerConnected': 'com.velocitypowered.api.event.player.ServerConnectedEvent',
+        'ServerPostConnect': 'com.velocitypowered.api.event.player.ServerPostConnectEvent',
+        'ServerPing': 'com.velocitypowered.api.event.proxy.ServerPingEvent',
+        'PlayerChat': 'com.velocitypowered.api.event.player.PlayerChatEvent',
+        'ProxyInitialize': 'com.velocitypowered.api.event.proxy.ProxyInitializeEvent',
+        'ProxyReload': 'com.velocitypowered.api.event.proxy.ProxyReloadEvent'
+    };
+
+    const events = isVelocity ? velocityEvents : spigotEvents;
 
     const selectedEvent = await vscode.window.showQuickPick(events, {
         placeHolder: 'Select event type'
@@ -121,7 +191,7 @@ async function addListener(context) {
     if (selectedEvent === 'Custom') {
         eventName = await vscode.window.showInputBox({
             prompt: 'Enter custom event name',
-            placeHolder: 'PlayerCustomEvent',
+            placeHolder: isVelocity ? 'ProxyCustomEvent' : 'PlayerCustomEvent',
             validateInput: text => {
                 if (!text) return 'Event name is required';
                 if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(text)) {
@@ -171,13 +241,27 @@ async function addListener(context) {
     fs.mkdirSync(listenerDir, { recursive: true });
     const listenerFile = path.join(listenerDir, `${listenerName}Listener.${ext}`);
 
-    const template = await readTemplate(context, `spigot/Listener.${ext}.template`);
+    const platform = isVelocity ? 'velocity' : 'spigot';
+    const template = await readTemplate(context, `${platform}/Listener.${ext}.template`);
+    
+    let eventImport;
+    if (isVelocity) {
+        if (selectedEvent === 'Custom') {
+            eventImport = `com.velocitypowered.api.event.${eventName}Event`;
+        } else {
+            eventImport = velocityEventImports[selectedEvent];
+        }
+    } else {
+        eventImport = `org.bukkit.event.${eventName.split(/(?=[A-Z])/)[0].toLowerCase()}.${eventName}Event`;
+    }
+
     const content = processTemplate(template, {
         packageName: basePackage.name,
         subPackage: packageName,
         listenerName: listenerName,
         eventPackage: eventName.split(/(?=[A-Z])/)[0].toLowerCase(),
-        eventName: eventName
+        eventName: eventName,
+        eventImport: eventImport
     });
 
     fs.writeFileSync(listenerFile, content);

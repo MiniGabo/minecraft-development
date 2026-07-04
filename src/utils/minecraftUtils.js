@@ -66,15 +66,24 @@ async function fetchMinecraftVersions() {
 }
 
 /**
- * Fetches Paper versions from PaperMC API
+ * Fetches Paper versions from PaperMC API (v3 - fill.papermc.io)
  */
 async function fetchPaperVersions() {
     try {
-        const response = await fetch('https://api.papermc.io/v2/projects/paper');
+        const response = await fetch('https://fill.papermc.io/v3/projects/paper', {
+            headers: { 'User-Agent': 'minecraft-dev-extension/1.3.1 (https://github.com/MiniGabo/minecraft-development)' }
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (data.versions && data.versions.length > 0) {
-            return _sortVersions(data.versions);
+        // v3 returns versions as an object with groups as keys
+        if (data.versions) {
+            const versions = [];
+            for (const group of Object.values(data.versions)) {
+                versions.push(...group);
+            }
+            if (versions.length > 0) {
+                return _sortVersions(versions);
+            }
         }
         return FALLBACK_VERSIONS;
     } catch (error) {
@@ -176,6 +185,8 @@ function usesPre17Names(minecraftVersion) {
 }
 
 function getRecommendedJavaVersion(minecraftVersion) {
+    const yearMatch = minecraftVersion.match(/^(\d{2})\./);
+    if (yearMatch && parseInt(yearMatch[1]) >= 26) return '25';
     if (compareMinecraftVersions(minecraftVersion, '1.20.5') >= 0) return '21';
     if (compareMinecraftVersions(minecraftVersion, '1.18') >= 0) return '17';
     if (compareMinecraftVersions(minecraftVersion, '1.17') >= 0) return '16';
@@ -272,20 +283,60 @@ async function getLatestSpigotVersion(minecraftVersion) {
  */
 async function getLatestPaperVersion(minecraftVersion) {
     try {
-        const response = await fetch(`https://api.papermc.io/v2/projects/paper/versions/${minecraftVersion}`);
+        const response = await fetch(`https://fill.papermc.io/v3/projects/paper/versions/${minecraftVersion}/builds`, {
+            headers: { 'User-Agent': 'minecraft-dev-extension/1.3.1 (https://github.com/MiniGabo/minecraft-development)' }
+        });
         if (!response.ok) return `${minecraftVersion}-R0.1-SNAPSHOT`;
         
         const data = await response.json();
         if (data.builds && data.builds.length > 0) {
-            // For Paper we usually use the MC version and it works, 
-            // but some people want the build number. 
-            // In pom.xml/build.gradle we use the API version.
             return `${minecraftVersion}-R0.1-SNAPSHOT`;
         }
         return `${minecraftVersion}-R0.1-SNAPSHOT`;
     } catch (error) {
         return `${minecraftVersion}-R0.1-SNAPSHOT`;
     }
+}
+
+let velocityMetadataCache = null;
+
+/**
+ * Fetches and caches Velocity Maven metadata.
+ */
+async function _fetchVelocityMetadata() {
+    if (velocityMetadataCache) return velocityMetadataCache;
+    try {
+        const url = 'https://repo.papermc.io/repository/maven-public/com/velocitypowered/velocity-api/maven-metadata.xml';
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        velocityMetadataCache = await response.text();
+        return velocityMetadataCache;
+    } catch (error) {
+        throw error;
+    }
+}
+
+/**
+ * Fetches Minecraft versions supported by Velocity.
+ */
+async function fetchVelocityVersions() {
+    try {
+        const data = await _fetchVelocityMetadata();
+        // Velocity versions are like 3.3.0-SNAPSHOT, we need MC versions
+        // Velocity supports the same MC versions as Paper, so we use Paper's list
+        return await fetchPaperVersions();
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to fetch Velocity versions: ${error.message}`);
+        return FALLBACK_VERSIONS;
+    }
+}
+
+/**
+ * Returns the Velocity API version to use.
+ * Using 3.4.0-SNAPSHOT as it has complete API support (3.5.0 does not yet).
+ */
+async function getLatestVelocityVersion(minecraftVersion) {
+    return '3.4.0-SNAPSHOT';
 }
 
 /**
@@ -339,8 +390,10 @@ module.exports = {
     fetchPaperVersions,
     fetchFabricGameVersions,
     fetchForgeVersions,
+    fetchVelocityVersions,
     getLatestSpigotVersion,
     getLatestPaperVersion,
+    getLatestVelocityVersion,
     getRecommendedGradleVersion,
 	compareMinecraftVersions,
     usesNewItemUseSignature,

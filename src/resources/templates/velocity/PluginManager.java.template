@@ -1,0 +1,16 @@
+package {{packageName}}.managers;
+
+{{lombokImport}}
+import com.velocitypowered.api.proxy.ProxyServer;
+
+public class PluginManager {
+    {{instanceField}}
+    
+    private PluginManager() {}
+    
+    {{instanceMethod}}
+
+    public void initialize(ProxyServer server) {
+        // Initialize your managers here
+    }
+}

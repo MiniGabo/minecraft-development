@@ -4,7 +4,8 @@ const {
     fetchMinecraftVersions, 
     fetchPaperVersions, 
     fetchFabricGameVersions, 
-    fetchForgeVersions 
+    fetchForgeVersions,
+    fetchVelocityVersions
 } = require('../utils/minecraftUtils');
 const ProjectGenerator = require('../utils/projectGenerator');
 
@@ -59,6 +60,9 @@ class CreatePluginPanel {
                         await this._sendVersions();
                         return;
                     case 'getRecommendedVersions':
+                        const { getRecommendedJavaVersion } = require('../utils/minecraftUtils');
+                        const recommendedJava = getRecommendedJavaVersion(message.minecraftVersion);
+
                         if (message.platform === 'fabric') {
                             const { getFabricVersionData } = require('../utils/fabricUtils');
                             const versionData = getFabricVersionData(message.minecraftVersion);
@@ -67,18 +71,27 @@ class CreatePluginPanel {
                                 loom: versionData.loom_version,
                                 loader: versionData.loader_version,
                                 yarn: versionData.yarn_mappings,
-                                fabric: versionData.fabric_version
+                                fabric: versionData.fabric_version,
+                                javaVersion: recommendedJava
                             });
                         } else if (message.platform === 'forge') {
                             const { getForgeVersionData } = require('../utils/forgeUtils');
-                            const { getRecommendedJavaVersion } = require('../utils/minecraftUtils');
                             const versionData = getForgeVersionData(message.minecraftVersion);
-                            const recommendedJava = getRecommendedJavaVersion(message.minecraftVersion);
                             this.panel.webview.postMessage({
                                 command: 'setForgeDefaults',
                                 forge: versionData.forge,
                                 mappingsChannel: versionData.mappingsChannel,
                                 mappingsVersion: versionData.mappingsVersion,
+                                javaVersion: recommendedJava
+                            });
+                        } else if (message.platform === 'plugin') {
+                            this.panel.webview.postMessage({
+                                command: 'setPluginDefaults',
+                                javaVersion: recommendedJava
+                            });
+                        } else if (message.platform === 'velocity') {
+                            this.panel.webview.postMessage({
+                                command: 'setVelocityDefaults',
                                 javaVersion: recommendedJava
                             });
                         }
@@ -111,11 +124,12 @@ class CreatePluginPanel {
     }
 
     async _sendVersions() {
-        const [spigotVersions, paperVersions, fabricVersions, forgeVersions, fabricApi] = await Promise.all([
+        const [spigotVersions, paperVersions, fabricVersions, forgeVersions, velocityVersions, fabricApi] = await Promise.all([
             fetchMinecraftVersions(),
             fetchPaperVersions(),
             fetchFabricGameVersions(),
             fetchForgeVersions(),
+            fetchVelocityVersions(),
             require('../utils/fabricUtils').fetchFabricApiVersions()
         ]);
 
@@ -126,6 +140,7 @@ class CreatePluginPanel {
             paper: paperVersions,
             fabric: fabricVersions,
             forge: forgeVersions,
+            velocity: velocityVersions,
             fabricApi: fabricApi
         });
     }

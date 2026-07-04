@@ -1,0 +1,9 @@
+package {{packageName}}.managers
+
+import com.velocitypowered.api.proxy.ProxyServer
+
+object PluginManager {
+    fun initialize(server: ProxyServer) {
+        // Initialize your managers here
+    }
+}

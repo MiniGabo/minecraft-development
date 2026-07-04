@@ -4,14 +4,17 @@ buildscript {
     repositories {
         jcenter()
         maven { url = 'https://files.minecraftforge.net/maven' }
+        {{kotlinBuildscriptRepo}}
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        {{kotlinBuildscriptDependency}}
     }
 }
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 {{mixinPlugin}}
+{{kotlinApplyPlugin}}
 
 version = '{{pluginVersion}}'
 group = '{{packageName}}'
@@ -37,6 +40,7 @@ sourceSets {
 
 dependencies {
 {{mixinDependency}}
+{{kotlinDependency}}
 {{lombokDependency}}
 }
 

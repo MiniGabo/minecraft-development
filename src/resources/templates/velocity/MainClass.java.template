@@ -1,0 +1,38 @@
+package {{packageName}};
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.Dependency;
+import com.velocitypowered.api.proxy.ProxyServer;
+import {{packageName}}.managers.PluginManager;
+import {{packageName}}.listeners.PlayerListener;
+import org.slf4j.Logger;
+{{dependencyImports}}
+
+@Plugin(id = "{{pluginId}}", name = "{{projectName}}", version = "{{pluginVersion}}",
+        url = "{{website}}", description = "{{description}}", authors = {"{{authorName}}"},
+        dependencies = { {{dependencyAnnotations}} })
+public class {{projectName}} {
+
+    private final ProxyServer server;
+    private final Logger logger;
+
+    @Inject
+    public {{projectName}}(ProxyServer server, Logger logger) {
+        this.server = server;
+        this.logger = logger;
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        // Initialize managers
+        PluginManager.getInstance().initialize(server);
+
+        // Register listeners
+        server.getEventManager().register(this, new PlayerListener());
+
+        logger.info("{{projectName}} has been enabled!");
+    }
+}

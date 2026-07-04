@@ -5,12 +5,14 @@ buildscript {
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '{{forgeGradlePluginVersion}}', changing: true
+        {{kotlinBuildscriptDependency}}
     }
 }
 
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
+{{kotlinApplyPlugin}}
 
 version = '{{pluginVersion}}'
 group = '{{packageName}}'
@@ -51,6 +53,7 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:{{minecraftVersion}}-{{forgeVersion}}'
+{{kotlinDependency}}
 {{lombokDependency}}
 }
 

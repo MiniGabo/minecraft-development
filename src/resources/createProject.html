@@ -217,6 +217,7 @@
                     <div class="input-with-icon">
                         <select id="projectType">
                             <option value="plugin">Minecraft Plugin (Spigot/Paper)</option>
+                            <option value="velocity">Velocity Plugin</option>
                             <option value="fabric">Fabric Mod</option>
                             <option value="forge">Forge Mod</option>
                         </select>
@@ -303,7 +304,7 @@
                 <span>⚙️</span> Technical Settings
             </div>
             <div class="form-grid">
-                <div class="form-group">
+                <div class="form-group" id="minecraftVersionGroup">
                     <label>Minecraft Version:</label>
                     <div class="input-group">
                         <span class="input-icon">🎮</span>
@@ -336,6 +337,7 @@
                         <span class="input-icon">☕</span>
                         <div class="input-with-icon">
                             <select id="javaVersion">
+                                <option value="25">Java 25</option>
                                 <option value="21">Java 21</option>
                                 <option value="17">Java 17</option>
                                 <option value="16">Java 16</option>
@@ -516,6 +518,7 @@
 
         const minecraftVersionSelect = document.getElementById('minecraftVersion');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const minecraftVersionGroup = document.getElementById('minecraftVersionGroup');
 
         let versionData = {
             spigot: [],
@@ -535,6 +538,7 @@
                 versionData.paper = message.paper;
                 versionData.fabric = message.fabric;
                 versionData.forge = message.forge;
+                versionData.velocity = message.velocity;
                 versionData.fabricApi = message.fabricApi || [];
                 
                 updateVersionList();
@@ -544,10 +548,21 @@
                 document.getElementById('loaderVersion').value = message.loader;
                 document.getElementById('yarnMappings').value = message.yarn;
                 document.getElementById('fabricApiVersion').value = message.fabric;
+                if (message.javaVersion) {
+                    document.getElementById('javaVersion').value = message.javaVersion;
+                }
             } else if (message.command === 'setForgeDefaults') {
                 document.getElementById('forgeVersion').value = message.forge;
                 document.getElementById('forgeMappingsChannel').value = message.mappingsChannel;
                 document.getElementById('forgeMappingsVersion').value = message.mappingsVersion;
+                if (message.javaVersion) {
+                    document.getElementById('javaVersion').value = message.javaVersion;
+                }
+            } else if (message.command === 'setPluginDefaults') {
+                if (message.javaVersion) {
+                    document.getElementById('javaVersion').value = message.javaVersion;
+                }
+            } else if (message.command === 'setVelocityDefaults') {
                 if (message.javaVersion) {
                     document.getElementById('javaVersion').value = message.javaVersion;
                 }
@@ -562,6 +577,7 @@
             let filteredVersions = [];
             if (type === 'fabric') filteredVersions = versionData.fabric;
             else if (type === 'forge') filteredVersions = versionData.forge;
+            else if (type === 'velocity') filteredVersions = versionData.velocity;
             else if (type === 'plugin' && apiType === 'paper') filteredVersions = versionData.paper;
             else filteredVersions = versionData.spigot;
 
@@ -586,6 +602,10 @@
                 updateForgeDefaults(mcVersion);
             } else if (type === 'fabric') {
                 updateFabricDefaults(mcVersion);
+            } else if (type === 'velocity') {
+                updateVelocityDefaults(mcVersion);
+            } else if (type === 'plugin') {
+                updatePluginDefaults(mcVersion);
             }
         }
 
@@ -630,6 +650,27 @@
             });
         }
 
+        function updatePluginDefaults(version) {
+            vscode.postMessage({ 
+                command: 'getRecommendedVersions', 
+                platform: 'plugin', 
+                minecraftVersion: version 
+            });
+        }
+
+        function updateVelocityDefaults(version) {
+            // Re-enable Gradle Kotlin for Velocity if it was disabled by Forge
+            const kotlinDslOption = [...buildSystem.options].find(opt => opt.value === 'gradle-kotlin');
+            if (kotlinDslOption) {
+                kotlinDslOption.disabled = false;
+            }
+            vscode.postMessage({ 
+                command: 'getRecommendedVersions', 
+                platform: 'velocity', 
+                minecraftVersion: version 
+            });
+        }
+
         minecraftVersionSelect.addEventListener('change', () => {
             updatePlatformDefaults();
         });
@@ -652,6 +693,7 @@
             if (type === 'fabric') {
                 apiVersionGroup.classList.add('hidden');
                 apiTypeGroup.classList.add('hidden');
+                minecraftVersionGroup.classList.remove('hidden');
                 fabricConfig.classList.remove('hidden');
                 depTitle.innerText = "Fabric Configuration";
                 buildSystem.value = 'gradle';
@@ -659,13 +701,23 @@
             } else if (type === 'forge') {
                 apiVersionGroup.classList.add('hidden');
                 apiTypeGroup.classList.add('hidden');
+                minecraftVersionGroup.classList.remove('hidden');
                 forgeConfig.classList.remove('hidden');
                 depTitle.innerText = "Forge Configuration";
                 buildSystem.value = 'gradle';
                 for (let opt of buildSystem.options) if (opt.value === 'maven') opt.disabled = true;
+            } else if (type === 'velocity') {
+                apiVersionGroup.classList.add('hidden');
+                apiTypeGroup.classList.add('hidden');
+                minecraftVersionGroup.classList.add('hidden');
+                pluginConfig.classList.remove('hidden');
+                depTitle.innerText = "Velocity Configuration";
+                buildSystem.value = 'gradle';
+                for (let opt of buildSystem.options) if (opt.value === 'maven') opt.disabled = false;
             } else {
                 apiVersionGroup.classList.remove('hidden');
                 apiTypeGroup.classList.remove('hidden');
+                minecraftVersionGroup.classList.remove('hidden');
                 pluginConfig.classList.remove('hidden');
                 depTitle.innerText = "Dependencies";
                 for (let opt of buildSystem.options) opt.disabled = false;

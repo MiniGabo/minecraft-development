@@ -1,0 +1,12 @@
+package {{packageName}}.listeners
+
+import com.velocitypowered.api.event.Subscribe
+import com.velocitypowered.api.event.connection.LoginEvent
+
+class PlayerListener {
+
+    @Subscribe
+    fun onPlayerLogin(event: LoginEvent) {
+        // Handle player login event
+    }
+}

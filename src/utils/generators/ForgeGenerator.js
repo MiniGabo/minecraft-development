@@ -59,6 +59,12 @@ class ForgeGenerator extends BaseGenerator {
         const mappingsChannel = this.data.mappingsChannel || forgeInfo.mappingsChannel;
         const mappingsVersion = this.data.mappingsVersion || forgeInfo.mappingsVersion;
 
+        // Kotlin version based on Minecraft/Gradle version
+        // Legacy (1.8-1.12.2) uses Gradle 4.x, needs Kotlin 1.3.72 (last version supporting Gradle 4.9+)
+        // Modern uses newer Gradle, can use latest Kotlin
+        const isModernMC = require('../fabricUtils').isModern(this.data.minecraftVersion);
+        const kotlinVersion = this.isLegacy ? '1.3.72' : (isModernMC ? '2.0.21' : '1.9.22');
+
         const variables = {
             projectName: this.data.projectName,
             projectNameLower: this.data.projectName.toLowerCase(),
@@ -81,6 +87,7 @@ class ForgeGenerator extends BaseGenerator {
             loaderVersionRange: ranges.loader_version_range,
             minecraftVersionRange: ranges.minecraft_version_range,
             forgeVersionRange: ranges.forge_version_range,
+            kotlin_version: kotlinVersion,
             mixinBuildscript: mixinBuildscript,
             mixinPlugin: mixinPlugin,
             mixinConfig: mixinConfig,
@@ -88,6 +95,25 @@ class ForgeGenerator extends BaseGenerator {
 			mixinManifestAttributes: mixinManifestAttributes,
             lombokDependency: useLombok ? await this.readTemplate(isKotlinDSL ? 'forge/fragments/gradle-lombok.kotlin.template' : 'forge/fragments/gradle-lombok.groovy.template') : ""
         };
+
+        // Pre-process Kotlin plugin fragment after variables are defined
+        const buildExt = isKotlinDSL ? 'kts' : 'groovy';
+        
+        // For legacy, fg4, fg5 (use buildscript + apply plugin)
+        if (this.isLegacy || this.era === 'fg4' || this.era === 'fg5') {
+            variables.kotlinPlugin = "";
+            variables.kotlinBuildscriptRepo = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-repo.groovy.template`), variables) : "";
+            variables.kotlinBuildscriptDependency = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-buildscript.groovy.template`), variables) : "";
+            variables.kotlinApplyPlugin = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-apply.groovy.template`), variables) : "";
+            variables.kotlinDependency = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-dependency-legacy.groovy.template`), variables) : "";
+        } else {
+            // For modern (fg6+, uses plugins block)
+            variables.kotlinPlugin = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-plugin.${buildExt}.template`), variables) : "";
+            variables.kotlinBuildscriptRepo = "";
+            variables.kotlinBuildscriptDependency = "";
+            variables.kotlinApplyPlugin = "";
+            variables.kotlinDependency = this.isKotlin ? this.processTemplate(await this.readTemplate(`forge/fragments/gradle-kotlin-dependency.groovy.template`), variables) : "";
+        }
 
         const templateDir = TEMPLATE_DIR_BY_ERA[this.era];
 

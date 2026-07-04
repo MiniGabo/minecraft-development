@@ -1,4 +1,4 @@
-	compile ('org.spongepowered:mixin:0.8.5') {
+	implementation ('org.spongepowered:mixin:0.8.5') {
 		exclude module: 'launchwrapper'
 		exclude module: 'guava'
 	}

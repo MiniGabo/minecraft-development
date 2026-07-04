@@ -1,0 +1,13 @@
+package {{packageName}}.{{subPackage}};
+
+import com.velocitypowered.api.event.Subscribe;
+import {{eventImport}};
+
+public class {{listenerName}}Listener {
+
+    @Subscribe
+    public void on{{eventName}}({{eventName}}Event event) {
+        // Add your event handling logic here
+
+    }
+}

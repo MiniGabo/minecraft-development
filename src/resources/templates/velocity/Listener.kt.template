@@ -1,0 +1,13 @@
+package {{packageName}}.{{subPackage}}
+
+import com.velocitypowered.api.event.Subscribe
+import {{eventImport}}
+
+class {{listenerName}}Listener {
+
+    @Subscribe
+    fun on{{eventName}}(event: {{eventName}}Event) {
+        // Add your event handling logic here
+
+    }
+}

@@ -2,6 +2,20 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 
+function _isVelocityProject(workspaceRoot) {
+    const buildGradle = path.join(workspaceRoot, 'build.gradle');
+    const buildGradleKts = path.join(workspaceRoot, 'build.gradle.kts');
+    const pomXml = path.join(workspaceRoot, 'pom.xml');
+
+    for (const file of [buildGradle, buildGradleKts, pomXml]) {
+        if (fs.existsSync(file)) {
+            const content = fs.readFileSync(file, 'utf8');
+            if (content.includes('velocity-api')) return true;
+        }
+    }
+    return false;
+}
+
 class ProjectStructureProvider {
     constructor(workspaceRoot) {
         this.workspaceRoot = workspaceRoot;
@@ -292,6 +306,7 @@ class ProjectToolsProvider {
         const isFabric = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'fabric.mod.json'));
         const isForge = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'META-INF', 'mods.toml')) || 
                         fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'mcmod.info'));
+        const isVelocity = _isVelocityProject(workspaceRoot);
         const isSpigot = fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'plugin.yml')) || 
                          fs.existsSync(path.join(workspaceRoot, 'pom.xml'));
         
@@ -310,6 +325,12 @@ class ProjectToolsProvider {
                 new ToolTreeItem('Add Forge Block', 'minecraft-plugin-development.addForgeBlock', 'layout-centered', 'Create a new Forge block with states, models and lang'),
                 new ToolTreeItem('Add Forge Recipe', 'minecraft-plugin-development.addForgeRecipe', 'symbol-color', 'Create a new JSON recipe'),
                 new ToolTreeItem('Add Forge Entity', 'minecraft-plugin-development.addForgeEntity', 'github-action', 'Create and register a new Forge entity')
+            );
+        } else if (isVelocity) {
+            items.push(
+                new ToolTreeItem('Add Command', 'minecraft-plugin-development.addCommand', 'symbol-method', 'Add a new Velocity command'),
+                new ToolTreeItem('Add Event Listener', 'minecraft-plugin-development.addListener', 'symbol-event', 'Add a new event listener'),
+                new ToolTreeItem('Add Config File', 'minecraft-plugin-development.addConfig', 'settings-gear', 'Add a configuration file')
             );
         } else if (isSpigot) {
             items.push(

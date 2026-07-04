@@ -9,6 +9,20 @@ const { addForgeItem, addForgeBlock, addForgeRecipe, addForgeEntity } = require(
 const { generateGettersSetters } = require('./commands/getterSetterCommands');
 const { fetchMinecraftVersions } = require('./utils/minecraftUtils');
 
+function _isVelocityProject(workspaceRoot) {
+    const buildGradle = path.join(workspaceRoot, 'build.gradle');
+    const buildGradleKts = path.join(workspaceRoot, 'build.gradle.kts');
+    const pomXml = path.join(workspaceRoot, 'pom.xml');
+
+    for (const file of [buildGradle, buildGradleKts, pomXml]) {
+        if (fs.existsSync(file)) {
+            const content = fs.readFileSync(file, 'utf8');
+            if (content.includes('velocity-api')) return true;
+        }
+    }
+    return false;
+}
+
 function activate(context) {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
 
@@ -106,6 +120,9 @@ function updateStatusBarContext(statusBar, workspaceRoot) {
                fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'mcmod.info'))) {
         type = 'Forge Mod';
         icon = '$(tools)';
+    } else if (_isVelocityProject(workspaceRoot)) {
+        type = 'Velocity Plugin';
+        icon = '$(plug)';
     } else if (fs.existsSync(path.join(workspaceRoot, 'src', 'main', 'resources', 'plugin.yml')) || 
                fs.existsSync(path.join(workspaceRoot, 'pom.xml'))) {
         type = 'Plugin (Spigot/Paper)';

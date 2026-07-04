@@ -1,6 +1,7 @@
 const SpigotGenerator = require('./generators/SpigotGenerator');
 const FabricGenerator = require('./generators/FabricGenerator');
 const ForgeGenerator = require('./generators/ForgeGenerator');
+const VelocityGenerator = require('./generators/VelocityGenerator');
 
 class ProjectGeneratorFactory {
     /**
@@ -15,6 +16,8 @@ class ProjectGeneratorFactory {
                 return new FabricGenerator(data, context);
             case 'forge':
                 return new ForgeGenerator(data, context);
+            case 'velocity':
+                return new VelocityGenerator(data, context);
             default:
                 return new SpigotGenerator(data, context);
         }

@@ -5,6 +5,29 @@ All notable changes to the "Minecraft Development" extension will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-07-01
+
+### Added
+- **Java 25 Support**: Minecraft 26.1+ now automatically uses Java 25.
+- **Forge Kotlin Support**: Full Kotlin support for Forge projects.
+  - Automatic Kotlin plugin, stdlib dependency, and buildscript configuration.
+  - Compatible Kotlin versions per era: 1.3.72 (Legacy/Gradle 4.x), 1.9.22 (FG4/FG5), 2.0.21 (Modern).
+- **Velocity Plugin Support**: Full project scaffolding for Velocity proxy plugins.
+  - Automatic project generation with `@Plugin` annotation and Guice dependency injection.
+  - Maven and Gradle (Groovy/Kotlin DSL) build system support.
+  - Kotlin and Lombok support with proper annotation processor configuration.
+  - Plugin dependency declarations via `@Dependency` annotations (e.g., Vault, PlaceholderAPI).
+  - Pre-built templates: Main class, PluginManager singleton, PlayerListener.
+  - Auto-detection of Velocity projects in status bar and project explorer.
+- **Java Auto-Recommendation**: Fabric and Spigot/Paper projects now auto-recommend Java version based on Minecraft version (previously only Forge did this).
+
+### Fixed
+- **Forge Kotlin Plugin Missing**: The Kotlin Gradle plugin was not being added to `build.gradle` for Forge projects, causing Kotlin code to not compile.
+- **Forge Kotlin stdlib Missing**: The `kotlin-stdlib` dependency was not included in Forge projects, causing "Unresolved reference" errors for standard Kotlin functions.
+- **Forge Content Generators Using Wrong Mappings**: Items, Blocks, and Entities generated for Forge FG4/FG5 projects incorrectly used Mojang mappings instead of MCP mappings, causing compilation errors.
+- **Forge Legacy Kotlin Compatibility**: Fixed Kotlin version for Legacy Forge (1.8-1.12.2) to use 1.3.72, compatible with Gradle 4.x (previous versions required Gradle 6.8+).
+- **Paper Version Fetching Broken**: PaperMC deprecated the v2 API (`api.papermc.io/v2`) and migrated to v3 (`fill.papermc.io/v3`). Updated all Paper API calls to use the new endpoint with required User-Agent header.
+
 ## [1.3.0] - 2026-06-11
 
 ### Added
